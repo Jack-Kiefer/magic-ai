@@ -42,11 +42,11 @@ def runTurn(player1, player2):
         print(f"{player1.name} attacks with {c1}")
     for i in range(len(c1)):
         if i >= len(c2):
-            player1.resolveAttack(c1[i], None)
-            player2.resolveBlock(c1[i], None)
+            player1.resolveAttack(c1[i], [])
+            player2.resolveBlock(c1[i], [])
         else:
-            player1.resolveAttack(c1[i], c2[i])
-            player2.resolveBlock(c1[i], c2[i])
+            player1.resolveAttack(c1[i], [c2[i]])
+            player2.resolveBlock(c1[i], [c2[i]])
     for card in player1.hand:
         player1.playCard(card)
 
@@ -56,15 +56,15 @@ if __name__ == "__main__":
     deck2 = create_mono_green_deck()
     gameState1 = game.GameState(deck1, "Johnny")
     gameState2 = game.GameState(deck2, "Timmy")
-    playerturn = 1
+    playerTurn = 1
     turn = 1
     while gameState1.life > 0 and gameState2.life > 0:
-        if playerturn == 1:
+        if playerTurn == 1:
             print(f"Starting turn {turn}")
             runTurn(gameState1, gameState2)
-            playerturn = 0
+            playerTurn = 0
         else:
             runTurn(gameState2, gameState1)
-            playerturn = 1
+            playerTurn = 1
             turn += 1
     print(gameState1.life, gameState2.life)

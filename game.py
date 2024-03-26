@@ -1,3 +1,5 @@
+import random
+
 class MagicCard:
     def __init__(self, name, cost):
         self.name = name
@@ -65,17 +67,23 @@ class GameState:
                 self.hand.remove(card)
                 print(f'{self.name} plays {card.name}')
 
-    def resolveBlock(self, attacker, blocker):
-        if blocker is None:
+    def resolveBlock(self, attacker, blockers):
+        if blockers == []:
             print(f"{self.name} doesn't block {attacker.name}")
             self.life -= attacker.power
-        elif blocker.toughness <= attacker.power:
-            print(f"{self.name} blocks {attacker.name} with {blocker.name}")
-            self.creatures.remove(blocker)
+        else:
+            print(f"{self.name} blocks {attacker.name} with {blockers}")
+            damage = attacker.power
+            i = 0
+            while i < len(blockers) and blockers[i].toughness <= damage:
+                self.creatures.remove(blockers[i])
+                damage -= blockers[i].toughness
+                i += 1
 
-    def resolveAttack(self, attacker, blocker):
+
+    def resolveAttack(self, attacker, blockers):
         attacker.tap()
-        if blocker is not None and attacker.toughness <= blocker.power:
+        if blockers != [] and attacker.toughness <= sum([blocker.power for blocker in blockers]):
             self.creatures.remove(attacker)
 
     def untappedCreatures(self):
