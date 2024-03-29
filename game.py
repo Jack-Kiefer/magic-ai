@@ -33,7 +33,7 @@ class Land(MagicCard):
 
 
 class GameState:
-    def __init__(self, deck, name):
+    def __init__(self, deck, name, seed):
         self.deck = deck
         self.hand = []
         self.untappedLands = 0
@@ -42,12 +42,12 @@ class GameState:
         self.landDrops = 1
         self.attacks = 1
         self.life = 20
-        self.shuffleDeck()
+        self.shuffleDeck(seed)
         self.drawCards(7)
         self.name = name
 
-    def shuffleDeck(self):
-        random.shuffle(self.deck)
+    def shuffleDeck(self, seed):
+        random.Random(seed).shuffle(self.deck)
 
     def drawCards(self, n):
         for _ in range(n):
