@@ -33,7 +33,7 @@ class Land(MagicCard):
 
 
 class GameState:
-    def __init__(self, deck, name, seed):
+    def __init__(self, deck, name, seed, scorefn):
         self.deck = deck
         self.hand = []
         self.untappedLands = 0
@@ -45,11 +45,15 @@ class GameState:
         self.shuffleDeck(seed)
         self.drawCards(7)
         self.name = name
+        self.scorefn = scorefn
 
     def shuffleDeck(self, seed):
         random.Random(seed).shuffle(self.deck)
 
     def drawCards(self, n):
+        if self.deck == []:
+            self.life = 0
+            return
         for _ in range(n):
             self.hand.append(self.deck.pop())
 
@@ -68,7 +72,7 @@ class GameState:
                 print(f'{self.name} plays {card.name}')
 
     def resolveBlock(self, attacker, blockers):
-        if blockers == []:
+        if len(blockers) == 0:
             print(f"{self.name} doesn't block {attacker.name}")
             self.life -= attacker.power
         else:
