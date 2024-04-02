@@ -1,9 +1,5 @@
-import copy
-import random
 import game
-import itertools
 import logic
-from functools import lru_cache
 
 def create_mono_green_deck():
     deck = []
@@ -38,8 +34,8 @@ def create_mono_green_deck():
 
 def runTurn(player1, player2):
     player1.startTurn()
-    attackers = logic.chooseAttackers(player1, player2)
-    blockers = logic.calculateBlock(list(attackers), player2.untappedCreatures(), player1, player2, 0)[1]
+    attackers = logic.chooseAttackers(player1, player2, )
+    blockers = logic.calculateBlock(list(attackers), player2.untappedCreatures(), basescore, player2, 0)[1]
     for attacker, blockers in blockers:
         print(f"{player1.name} attacks with {attacker.name}")
         player1.resolveAttack(attacker, blockers)
