@@ -3,26 +3,39 @@ from gym import spaces
 import numpy as np
 import random
 import game
-
-#%%
+import rungame
+from gym.spaces import Tuple, Discrete, MultiBinary, MultiDiscrete
 class MTGEnv(gym.Env):
     def __init__(self):
-        super(MTGEnv, self).__init__()
-        # Assuming a maximum of 20 creatures and 20 lands can be played
-        self.action_space = spaces.Discrete(40)  # 20 creatures and 20 lands
-        self.observation_space = spaces.Dict({
-            "hand": spaces.MultiBinary(40),  # Representation of the hand
-            "creatures": spaces.Box(low=0, high=20, shape=(20, 3), dtype=np.int32),  # (power, toughness, tapped)
-            "lands": spaces.Discrete(20),
-            "life": spaces.Discrete(21)  # Player life from 0 to 20
-        })
+        def __init__(self):
+            super(MTGEnv, self).__init__()
 
-        self.deck = [game.Creature("Bear", 2, 2, 2) for _ in range(20)] + [Land("Forest") for _ in range(20)]
-        random.shuffle(self.deck)
-        self.state = GameState(self.deck, "AI Player", seed=0, scorefn=lambda x: x.life)
+            # Define action spaces
+            self.num_cards = 60  # Assume the deck has 60 cards
+            self.num_creatures = 20  # Assume up to 20 creatures can be in play
+            self.num_distinct_cards = 17
+            self.num_attackers = 20
+
+            # Action space includes choosing a card to play, attacking options, blocking options
+            self.action_space = Tuple((
+                Discrete(self.num_distinct_cards + 1),  # +1 for choosing not to play a card
+                MultiBinary(self.num_creatures),  # Each bit represents a creature attacking
+                MultiDiscrete([self.num_creatures+1]*self.num_attackers)  # Each bit represents a creature blocking another
+            ))
+
+            self.observation_space = spaces.Dict({
+                "hand": MultiBinary(self.num_cards),  # Representation of the hand
+                "creatures": MultiBinary(self.num_cards),
+                "opponent_creatures": MultiBinary(self.num_cards),
+                "lands": spaces.Discrete(20),
+                "life": spaces.Discrete(21)
+            })
+
+            self.deck = rungame.create_mono_green_deck()
+            self.state = game.GameState(self.deck, "AI Player", seed=0, scorefn=lambda x: x.life)
 
     def reset(self):
-        self.state = GameState(self.deck, "AI Player", seed=random.randint(0, 1000), scorefn=lambda x: x.life)
+        self.state = game.GameState(self.deck, "AI Player", seed=random.randint(0, 1000), scorefn=lambda x: x.life)
         return self._get_obs()
 
     def _get_obs(self):
@@ -55,36 +68,4 @@ class MTGEnv(gym.Env):
         print("Hand:", self.state.hand)
         print("Creatures on Field:", self.state.creatures)
 
-
-# Hyperparameters
-alpha = 0.1
-gamma = 0.6
-epsilon = 0.1
-
-# Initialize Q-table
-q_table = np.zeros([env.observation_space.n, env.action_space.n])
-
-# Training loop
-for i in range(1, 10001):
-    state = env.reset()
-    epochs, penalties, reward, = 0, 0, 0
-    done = False
-
-    while not done:
-        if random.uniform(0, 1) < epsilon:
-            action = env.action_space.sample()  # Explore action space
-        else:
-            action = np.argmax(q_table[state])  # Exploit learned values
-
-        next_state, reward, done, info = env.step(action)
-
-        old_value = q_table[state, action]
-        next_max = np.max(q_table[next_state])
-
-        new_value = (1 - alpha) * old_value + alpha * (reward + gamma * next_max)
-        q_table[state, action] = new_value
-
-        state = next_state
-        epochs += 1
-
-print("Training finished.\n")
+env = MTGEnv()

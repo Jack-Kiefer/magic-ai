@@ -48,7 +48,10 @@ class GameState:
         self.scorefn = scorefn
 
     def shuffleDeck(self, seed):
-        random.Random(seed).shuffle(self.deck)
+        if seed == 0:
+            random.shuffle(self.deck)
+        else:
+            random.Random(seed).shuffle(self.deck)
 
     def drawCards(self, n):
         if self.deck == []:
@@ -63,20 +66,20 @@ class GameState:
                 self.untappedLands -= card.cost
                 self.creatures.append(card)
                 self.hand.remove(card)
-                print(f'{self.name} plays {card.name}')
+                # print(f'{self.name} plays {card.name}')
             elif isinstance(card, Land) and self.landDrops > 0:
                 self.untappedLands += 1
                 self.totalLands += 1
                 self.landDrops -= 1
                 self.hand.remove(card)
-                print(f'{self.name} plays {card.name}')
+                # print(f'{self.name} plays {card.name}')
 
     def resolveBlock(self, attacker, blockers):
         if len(blockers) == 0:
-            print(f"{self.name} doesn't block {attacker.name}")
+            # print(f"{self.name} doesn't block {attacker.name}")
             self.life -= attacker.power
         else:
-            print(f"{self.name} blocks {attacker.name} with {blockers}")
+            # print(f"{self.name} blocks {attacker.name} with {blockers}")
             damage = attacker.power
             i = 0
             while i < len(blockers) and blockers[i].toughness <= damage:
