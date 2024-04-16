@@ -19,6 +19,8 @@ class mtg_env(AECEnv):
         super().__init__()
         self.observations = None
         self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()])
+        self._agent_selector = None
+        self.agent_selection = None
         self.possible_agents = [0, 1]
         self.agents = [0, 1]
 
@@ -26,8 +28,11 @@ class mtg_env(AECEnv):
         self.num_cards = 60
         self.num_distinct_creatures = 16
         self.num_distinct_cards = 17
+        self.cards = rungame.create_mono_green_deck()
         self.distinct_cards = rungame.generateDistinctCards()
         self.distinct_creatures = rungame.generateDistinctCreatures()
+        self.creatures = rungame.generateCreatures()
+        self.num_creatures = 32
 
         # action masking
         # 0 - pass priority
@@ -35,63 +40,59 @@ class mtg_env(AECEnv):
         # 18-33 - attack with creature
         # 34-289 - block with creature on a creature
         # self.action_space = Discrete(1 + self.num_distinct_cards + self.num_distinct_creatures + self.num_distinct_creatures^2)
-        self.action_spaces = {agent: Discrete(1 + self.num_distinct_cards + self.num_distinct_creatures + self.num_distinct_creatures^2) for agent in self.agents}
+        self._action_spaces = {
+            agent: Discrete(
+                1 + self.num_distinct_cards + self.num_distinct_creatures + self.num_distinct_creatures ** 2)
+            for agent in self.agents}
 
-        self.observation_spaces = {agent: Dict({
-            "hand": MultiBinary(self.num_cards),
-            "creatures": MultiBinary(self.num_cards),
-            "opponent_creatures": MultiBinary(self.num_cards),
-            "lands": Discrete(20),
-            "life": Discrete(21),
-            "opponent_life": Discrete(21)
-        }) for agent in self.agents}
+        max_values = np.array([25] + [3] * 3 * self.num_distinct_creatures + [25] + [21] + [21])
+        self._observation_spaces = {
+            agent: MultiDiscrete(max_values)
+            for agent in self.agents
+        }
 
-    def generate_action_mask(self, pl):
+    def generate_action_mask(self, agent):
         # No legal action if not your play
         if not self.state.priority:
-            return None
-        mask = [0]*self.action_space.n
+            return np.zeros(self._action_spaces[agent].n, dtype=np.int8)
+        mask = np.zeros(self._action_spaces[agent].n, dtype=np.int8)
         mask[0] = 1
         last = 1
         if self.state.phase in [0, 3]:
             for i in range(self.num_distinct_cards):
                 card = self.distinct_cards[i]
-                if (card in self.state.hands[pl] and
-                        ((isinstance(card,game.Creature) and card.cost <= self.state.untappedLands[pl])
-                         or (isinstance(card,game.Land) and self.state.landDrops[pl] > 0))):
-                    mask[i+last] = 1
+                if (card in self.state.hands[agent] and
+                        ((isinstance(card, game.Creature) and card.cost <= self.state.untappedLands[agent])
+                         or (isinstance(card, game.Land) and self.state.landDrops[agent] > 0))):
+                    mask[i + last] = 1
         last += self.num_distinct_cards
         if self.state.phase == 1:
             for i in range(self.num_distinct_creatures):
                 # need to care if creatures are tapped / summoning sick
-                if self.distinct_creatures[i] in self.state.creatures[pl]:
-                    mask[i+last] = 1
+                if self.distinct_creatures[i] in self.state.creatures[agent]:
+                    mask[i + last] = 1
         last += self.num_distinct_creatures
         if self.state.phase == 2:
             for i in range(self.num_distinct_creatures):
                 for j in range(self.num_distinct_creatures):
-                    if self.distinct_creatures[i] in self.state.attackers and self.distinct_creatures[j] in self.state.untappedCreatures():
+                    if self.distinct_creatures[i] in self.state.attackers and self.distinct_creatures[
+                        j] in self.state.untappedCreatures():
                         mask[i + last] = 1
         return mask
 
     def mask_to_action(self, action):
-        action_type = ""
         action_index = 0
         c = action
         if c == 0:
-            action_type = "pass_priority"
-            return action_type, 0
+            return "pass_priority", 0
         c -= 1
         if c < self.num_distinct_cards:
-            action_type = "play_card"
-            return action_type, c
+            return "play_card", c
         c -= self.num_distinct_cards
         if c < self.num_distinct_creatures:
-            action_type = "attack"
-            return action_type, action_index
+            return "attack", action_index
         c -= self.num_distinct_creatures
-        action_type = "block"
-        return action_type, action_index
+        return "block", action_index
 
     def reset(self, seed=None, options=None):
         self.agents = copy(self.possible_agents)
@@ -100,21 +101,26 @@ class mtg_env(AECEnv):
         self._cumulative_rewards = {agent: 0 for agent in self.agents}
         self.terminations = {agent: False for agent in self.agents}
         self.truncations = {a: False for a in self.agents}
-        self.infos = {agent: {} for agent in self.agents}
-
+        self.infos = {agent: {"action_mask": self.generate_action_mask(agent)} for agent in self.agents}
+        self._agent_selector = self.state.priority
         self.agent_selection = self.state.priority
+
         self.observations = {agent: self.observe(agent) for agent in self.agents}
 
-    def observe(self, agent):
-        return {
-            "hand": self.state.hands[agent],
-            "creatures": self.state.creatures[agent],
-            "opponent_creatures": self.state.creatures[1 - agent],
-            "lands": self.state.totalLands[agent],
-            "life": self.state.life[agent],
-            "opponent_life": self.state.life[1 - agent]
-        }
+    def convert_to_multidiscrete(self, cards, total_cards):
+        obs = np.zeros(len(total_cards), dtype=int)
+        for card in cards:
+            index = self.distinct_cards.index(card)
+            obs[index] += 1
+        return obs
 
+    def observe(self, agent):
+        return np.concatenate([
+            self.convert_to_multidiscrete(self.state.hands[agent], self.distinct_cards),
+            self.convert_to_multidiscrete(self.state.creatures[agent], self.distinct_creatures),
+            self.convert_to_multidiscrete(self.state.creatures[1 - agent], self.distinct_creatures),
+            np.array([self.state.totalLands[agent], self.state.life[agent], self.state.life[1 - agent]])
+            ])
 
     def step(self, action):
         action_type, action_index = self.mask_to_action(action)
@@ -131,23 +137,23 @@ class mtg_env(AECEnv):
             self.state.addBlocker(self.distinct_creatures[attacker_index], self.distinct_creatures[blocker_index])
         if self.state.life[pl] <= 0:
             self.rewards[pl] += -1
-            self.rewards[1-pl] += 1
+            self.rewards[1 - pl] += 1
         if self.state.life[1 - pl] <= 0:
             self.rewards[1 - pl] = 1
             self.rewards[pl] = 0
-        self.terminations = {0:True, 1:True}
+        self.terminations = {0: True, 1: True}
         self.observations = {agent: self.observe(agent) for agent in self.agents}
+        self.infos = {agent: {"action_mask": self.generate_action_mask(agent)} for agent in self.agents}
+        self._agent_selector = self.state.priority
         self._accumulate_rewards()
-
-
 
     def render(self):
         pass
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent):
-        return self.observation_spaces[agent]
+        return self._observation_spaces[agent]
 
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent):
-        return self.action_spaces[agent]
+        return self._action_spaces[agent]

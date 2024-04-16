@@ -14,8 +14,10 @@ class MagicCard:
         return self.__str__()
 
     def __eq__(self, other):
-
         return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
 
 
 class Creature(MagicCard):
@@ -49,12 +51,12 @@ class GameState:
         self.landDrops = [1, 1]
         self.attacks = [1, 1]
         self.attackingCreatures = []
-        self.blockingCreatures = defaultdict(lambda x : [])
+        self.blockingCreatures = defaultdict(lambda : [])
         self.shuffleDeck(0)
         self.shuffleDeck(1)
         self.drawCards(7, 0)
         self.drawCards(7, 1)
-        self.turn = random.choice([0,1])
+        self.turn = random.choice([0, 1])
         self.priority = self.turn
         # 'main1', 'declare_attackers', 'declare_blockers', 'main2'
         self.phase = 0
@@ -62,6 +64,7 @@ class GameState:
 
     def addBlocker(self, attacker, blocker):
         self.blockingCreatures[attacker].append(blocker)
+
     def addAttacker(self, attacker):
         self.attackingCreatures.append(attacker)
 
@@ -74,7 +77,6 @@ class GameState:
         for attacker, blockers in self.blockingCreatures:
             self.resolveAttack(attacker, blockers, 1 - pl)
         self.phase = 3
-
 
     def passPriority(self, pl):
         if pl == self.turn:
@@ -94,19 +96,17 @@ class GameState:
                 self.declareBlock(pl)
                 self.priority = 1 - self.priority
 
-
-
     def playCard(self, card, pl):
         if card in self.hands[pl]:
-            if isinstance(card, Creature) and card.cost <= self.untappedLands:
-                self.untappedLands -= card.cost
+            if isinstance(card, Creature) and card.cost <= self.untappedLands[pl]:
+                self.untappedLands[pl] -= card.cost
                 self.creatures[pl].append(card)
                 self.hands[pl].remove(card)
                 # print(f'{self.name} plays {card.name}')
             elif isinstance(card, Land) and self.landDrops[pl] > 0:
-                self.untappedLands += 1
-                self.totalLands += 1
-                self.landDrops -= 1
+                self.untappedLands[pl] += 1
+                self.totalLands[pl] += 1
+                self.landDrops[pl] -= 1
                 self.hands[pl].remove(card)
                 # print(f'{self.name} plays {card.name}')
 
@@ -119,7 +119,6 @@ class GameState:
             return
         for _ in range(n):
             self.hands[pl].append(self.decks[pl].pop())
-
 
     def resolveAttack(self, attacker, blockers, pl):
         if len(blockers) == 0:
