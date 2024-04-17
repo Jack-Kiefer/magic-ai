@@ -1,6 +1,8 @@
 import random
 from collections import defaultdict
 
+import numpy as np
+
 
 class MagicCard:
     def __init__(self, name, cost):
@@ -26,12 +28,21 @@ class Creature(MagicCard):
         self.power = power
         self.toughness = toughness
         self.tapped = False
+        self.summoning_sick = True
 
     def tap(self):
         self.tapped = True
 
     def untap(self):
         self.tapped = False
+
+    def __eq__(self, other):
+        if isinstance(other, Creature):
+            return self.name == other.name
+        return False
+
+    def __hash__(self):
+        return hash(self.name)
 
 
 class Land(MagicCard):
@@ -51,7 +62,7 @@ class GameState:
         self.landDrops = [1, 1]
         self.attacks = [1, 1]
         self.attackingCreatures = []
-        self.blockingCreatures = defaultdict(lambda : [])
+        self.blockingCreatures = {}
         self.shuffleDeck(0)
         self.shuffleDeck(1)
         self.drawCards(7, 0)
@@ -60,7 +71,6 @@ class GameState:
         self.priority = self.turn
         # 'main1', 'declare_attackers', 'declare_blockers', 'main2'
         self.phase = 0
-        self.attackers = []
 
     def addBlocker(self, attacker, blocker):
         self.blockingCreatures[attacker].append(blocker)
@@ -71,10 +81,10 @@ class GameState:
     def declareAttack(self):
         for attacker in self.attackingCreatures:
             attacker.tap()
-        self.blockingCreatures = [[attacker, []] for attacker in self.attackingCreatures]
+        self.blockingCreatures = {attacker: [] for attacker in self.attackingCreatures}
 
     def declareBlock(self, pl):
-        for attacker, blockers in self.blockingCreatures:
+        for attacker, blockers in self.blockingCreatures.items():
             self.resolveAttack(attacker, blockers, 1 - pl)
         self.phase = 3
 
@@ -83,13 +93,14 @@ class GameState:
             if self.phase == 0:
                 self.phase += 1
             elif self.phase == 1:
-                if self.attackingCreatures == []:
+                if not self.attackingCreatures:
                     self.phase = 3
                 else:
                     self.declareAttack()
                     self.phase = 2
                     self.priority = 1 - self.priority
             elif self.phase == 3:
+                self.turn = 1 - self.turn
                 self.startTurn(self.turn)
         else:
             if self.phase == 2:
@@ -143,8 +154,9 @@ class GameState:
         self.untappedLands[pl] = self.totalLands[pl]
         self.landDrops[pl] = 1
         self.attackingCreatures = []
-        self.blockingCreatures = []
-        self.turn = 1 - self.turn
+        self.blockingCreatures = {}
         self.priority = self.turn
+        self.phase = 0
         for creature in self.creatures[pl]:
             creature.untap()
+            creature.summoning_sick = False
