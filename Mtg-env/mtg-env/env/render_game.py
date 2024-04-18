@@ -23,10 +23,10 @@ class MTGRender:
         self.tapped_images = {}
         self.load_images()  # Load images in the main thread
 
-
-        self.env_thread = threading.Thread(target=self.run_environment)
-        self.env_thread.daemon = True
-        self.env_thread.start()
+        # Create a frame for action buttons
+        self.action_frame = tk.Frame(self.root)
+        self.action_frame.pack(fill=tk.X, side=tk.BOTTOM)
+        self.action_buttons = []
 
     def load_image(self, path):
         image = Image.open(path)
@@ -46,7 +46,7 @@ class MTGRender:
 
     def calculateStart(self, num_cards):
         return 100 + (self.w-100 - num_cards*(self.cardw + self.margin)) / 2
-    
+
     def draw_player_area(self, player, hand_y, lands_y, creatures_y):
         self.canvas.create_text(50, hand_y+self.cardh/2, text=str(self.env.state.life[player]), fill="black", font=('Helvetica 30 bold'))
 
@@ -89,52 +89,43 @@ class MTGRender:
     def update(self):
         self.draw_board()
 
-    def run(self):
-        self.root.mainloop()
-
-    def run_environment(self):
-        while True:
+    def doAction(self, action):
+        self.env.step(action)
+        self.update()
+        while sum(self.env.infos[self.env.agent_selection]['action_mask']) == 1:
+            self.env.step(0)
             self.update()
-            print("\nCurrent Environment State:")
-            self.env.render()  # Ensure the environment has a render method to visualize state
+        self.update_actions()
 
-            if any(self.env.terminations.values()):
-                print("Game has ended.")
-                break
+    def getActionDesc(self, action):
+        name, data = self.env.mask_to_action(action)
+        if name == "pass_priority":
+            return "Pass Priority"
+        if name == "play_card":
+            return f"Play {self.env.distinct_cards[data].name}"
+        if name == "attack":
+            return f"Attack with {self.env.distinct_creatures[data].name}"
+        if name == "block":
+            return f"Block {self.env.distinct_creatures[data[0]].name} with {self.env.distinct_creatures[data[1]].name}"
 
-            agent = self.env.agent_selection
-            print(f"Current agent: {agent}")
+    def update_actions(self):
+        for button in self.action_buttons:
+            button.destroy()
+        self.action_buttons.clear()
 
-            print(f"Current phase: {self.env.state.phase}")
+        agent = self.env.agent_selection
+        action_mask = self.env.infos[agent]['action_mask']
+        for i, available in enumerate(action_mask):
+            if available:
+                button = tk.Button(self.action_frame, text=f"{self.getActionDesc(i)}",
+                                   command=lambda i=i: self.doAction(i))
+                button.pack(side=tk.LEFT)
+                self.action_buttons.append(button)
 
-            # Display action choices and mask
-            action_mask = self.env.infos[agent]['action_mask']
-            print("Available actions:")
-            for i, available in enumerate(action_mask):
-                if available:
-                    action_desc, _ = self.env.mask_to_action(i)
-                    print(f"{i}: {action_desc}")
-
-            # User chooses an action
-            if sum(action_mask) == 1:
-                self.env.step(0)
-            else:
-                valid_input = False
-                while not valid_input:
-                    try:
-                        action = int(input("Enter your action: "))
-                        if action < 0 or action >= self.env.action_space(agent).n:
-                            raise ValueError("Action out of bounds.")
-                        if action_mask[action] == 0:
-                            raise ValueError("Action not allowed.")
-                        valid_input = True
-                    except ValueError as e:
-                        print(str(e))
-                        continue
-
-                # Perform the chosen action
-                self.env.step(action)
-                print(f"Action taken: {self.env.mask_to_action(action)}")
+    def run(self):
+        self.update()
+        self.update_actions()
+        self.root.mainloop()
 
 if __name__ == "__main__":
     env = mtg_env()

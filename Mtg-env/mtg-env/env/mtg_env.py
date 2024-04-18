@@ -31,11 +31,8 @@ class mtg_env(AECEnv):
         self.possible_agents = [0, 1]
         self.agents = [0, 1]
 
-        # Define action spaces
-        self.num_cards = 60
         self.num_distinct_creatures = 16
         self.num_distinct_cards = 17
-        self.cards = rungame.create_mono_green_deck()
         self.distinct_cards = rungame.generateDistinctCards()
         self.distinct_creatures = rungame.generateDistinctCreatures()
         self.creatures = rungame.generateCreatures()
@@ -188,48 +185,6 @@ class mtg_env(AECEnv):
 
     def render(self, mode='human'):
         pass
-
-    # def render(self):
-    #     print(f"Current turn: Player {self.state.turn + 1}")
-    #     print(f"Phase: {['Main phase 1', 'Declare attackers', 'Declare blockers', 'Main phase 2'][self.state.phase]}")
-    #     print(f"Priority: Player {self.state.priority + 1}\n")
-    #
-    #     for agent in self.agents:
-    #         player_label = f"Player {agent + 1} (Life: {self.state.life[agent]})"
-    #         if self.state.priority == agent:
-    #             player_label += " <- Priority"
-    #         print(player_label)
-    #
-    #         lands_display = "Lands: [" + "U"*self.state.untappedLands[agent] + "T"*(self.state.totalLands[agent] - self.state.untappedLands[agent]) + "]"
-    #         print(lands_display)
-    #
-    #         print("Hand: ", end="")
-    #         if self.state.hands[agent]:
-    #             print(", ".join([f"{card.name}" for card in self.state.hands[agent]]))
-    #         else:
-    #             print("Empty")
-    #
-    #         print("\nBoard:")
-    #         if self.state.creatures[agent]:
-    #             for creature in self.state.creatures[agent]:
-    #                 status = "tapped" if creature.tapped else "untapped"
-    #                 print(f"{creature.name} ({creature.power}/{creature.toughness}, {status})")
-    #         else:
-    #             print("No creatures on board")
-    #
-    #         print("\n")
-    #
-    #     print("Combat Zone:")
-    #     if self.state.phase in [1, 2]:  # Attackers and blockers phase
-    #         for attacker in self.state.attackingCreatures:
-    #             blockers = self.state.blockingCreatures.get(attacker, [])
-    #             if blockers:
-    #                 blocker_names = ", ".join([blocker.name for blocker in blockers])
-    #                 print(f"{attacker.name} (attacking) is blocked by {blocker_names}")
-    #             else:
-    #                 print(f"{attacker.name} (attacking) is unblocked")
-    #
-    #     print("\n" + "=" * 50 + "\n")
 
     def close(self):
         pass
