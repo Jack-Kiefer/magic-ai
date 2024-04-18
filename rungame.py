@@ -5,74 +5,39 @@ import random
 import game
 import logic
 
+green_creatures = [
+        ("Woodland Druid", 1, "images/woodland-druid.png", 1, 2),
+        ("Dryad Militant", 1, "images/dryad-militant.png", 2, 1),
+        ("Grizzly Bears", 2, "images/grizzly-bears.png", 2, 2),
+        ("Terrian Elemental",2, "images/terrain-elemental.png", 3, 2),
+        ("Winding Constrictor",2, "images/winding-constrictor.png", 2, 3),
+        ("Wary Thespian", 2, "images/wary-thespian.png", 3, 1),
+        ("Alpine Grizzly", 3, "images/alpine-grizzly.png", 4, 2),
+        ("Centaur Courser", 3, "images/centaur-courser.png", 3, 3),
+        ("Spined Karok", 3, "images/spined-karok.png", 2, 4),
+        ("Rumbling Baloth", 4, "images/rumbling-baloth.png", 4, 4),
+        ("Axebane Beast", 4, "images/axebane-beast.png", 3, 4),
+        ("Vine Mare", 4, "images/vine-mare.png", 5, 3),
+        ("Thornhide Wolves", 5, "images/thornhide-wolves.png", 4, 5),
+        ("Craw Wurm", 6, "images/craw-wurm.png", 6, 5),
+        ("Vastwood Gorger", 6, "images/vastwood-gorger.png", 5, 6),
+        ("Axebane Stag", 7, "images/axebane-stag.png", 6, 7),
+    ]
+
 def generateDistinctCreatures():
     cards = []
-    green_creatures = [
-        ("Woodland Druid", 1, 1, 2),
-        ("Dryad Militant", 1, 2, 1),
-        ("Grizzly Bears", 2, 2, 2),
-        ("Terrian Elemental", 2, 3, 2),
-        ("Winding Constrictor", 2, 2, 3),
-        ("Wary Thespian", 2, 3, 1),
-        ("Alpine Grizzly", 3, 4, 2),
-        ("Centaur Courser", 3, 3, 3),
-        ("Spined Karok", 3, 2, 4),
-        ("Rumbling Baloth", 4, 4, 4),
-        ("Axebane Beast", 4, 3, 4),
-        ("Vine Mare", 4, 5, 3),
-        ("Thornhide Wolves", 5, 4, 5),
-        ("Craw Wurn", 6, 6, 5),
-        ("Vastwood Gorger", 6, 5, 6),
-        ("Axebane Stag", 7, 6, 7),
-    ]
     for i in range(16):
         cards.append(game.Creature(*green_creatures[i]))
     return cards
 def generateDistinctCards():
     cards = []
-    cards.append(game.Land("Forest"))
-    green_creatures = [
-        ("Woodland Druid", 1, 1, 2),
-        ("Dryad Militant", 1, 2, 1),
-        ("Grizzly Bears", 2, 2, 2),
-        ("Terrian Elemental", 2, 3, 2),
-        ("Winding Constrictor", 2, 2, 3),
-        ("Wary Thespian", 2, 3, 1),
-        ("Alpine Grizzly", 3, 4, 2),
-        ("Centaur Courser", 3, 3, 3),
-        ("Spined Karok", 3, 2, 4),
-        ("Rumbling Baloth", 4, 4, 4),
-        ("Axebane Beast", 4, 3, 4),
-        ("Vine Mare", 4, 5, 3),
-        ("Thornhide Wolves", 5, 4, 5),
-        ("Craw Wurn", 6, 6, 5),
-        ("Vastwood Gorger", 6, 5, 6),
-        ("Axebane Stag", 7, 6, 7),
-    ]
+    cards.append(game.Land("Forest", "images/forest.png"))
     for i in range(16):
         cards.append(game.Creature(*green_creatures[i]))
     return cards
 
 def generateCreatures():
     cards = []
-    green_creatures = [
-        ("Woodland Druid", 1, 1, 2),
-        ("Dryad Militant", 1, 2, 1),
-        ("Grizzly Bears", 2, 2, 2),
-        ("Terrian Elemental", 2, 3, 2),
-        ("Winding Constrictor", 2, 2, 3),
-        ("Wary Thespian", 2, 3, 1),
-        ("Alpine Grizzly", 3, 4, 2),
-        ("Centaur Courser", 3, 3, 3),
-        ("Spined Karok", 3, 2, 4),
-        ("Rumbling Baloth", 4, 4, 4),
-        ("Axebane Beast", 4, 3, 4),
-        ("Vine Mare", 4, 5, 3),
-        ("Thornhide Wolves", 5, 4, 5),
-        ("Craw Wurn", 6, 6, 5),
-        ("Vastwood Gorger", 6, 5, 6),
-        ("Axebane Stag", 7, 6, 7),
-    ]
     for i in range(16):
         cards.append(game.Creature(*green_creatures[i]))
         cards.append(game.Creature(*green_creatures[i]))
@@ -83,26 +48,7 @@ def create_mono_green_deck():
 
     # Add 16 Forests
     for _ in range(28):
-        deck.append(game.Land("Forest"))
-
-    green_creatures = [
-        ("Woodland Druid", 1, 1, 2),
-        ("Dryad Militant", 1, 2, 1),
-        ("Grizzly Bears", 2, 2, 2),
-        ("Terrian Elemental", 2, 3, 2),
-        ("Winding Constrictor", 2, 2, 3),
-        ("Wary Thespian", 2, 3, 1),
-        ("Alpine Grizzly", 3, 4, 2),
-        ("Centaur Courser", 3, 3, 3),
-        ("Spined Karok", 3, 2, 4),
-        ("Rumbling Baloth", 4, 4, 4),
-        ("Axebane Beast", 4, 3, 4),
-        ("Vine Mare", 4, 5, 3),
-        ("Thornhide Wolves", 5, 4, 5),
-        ("Craw Wurn", 6, 6, 5),
-        ("Vastwood Gorger", 6, 5, 6),
-        ("Axebane Stag", 7, 6, 7),
-    ]
+        deck.append(game.Land("Forest", "images/forest.png"))
     for i in range(16):
         deck.append(game.Creature(*green_creatures[i]))
         deck.append(game.Creature(*green_creatures[i]))

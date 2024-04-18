@@ -5,9 +5,10 @@ import numpy as np
 
 
 class MagicCard:
-    def __init__(self, name, cost):
+    def __init__(self, name, cost, image_path):
         self.name = name
         self.cost = cost
+        self.image_path = image_path
 
     def __str__(self):
         return self.name
@@ -23,8 +24,8 @@ class MagicCard:
 
 
 class Creature(MagicCard):
-    def __init__(self, name, cost, power, toughness):
-        super().__init__(name, cost)
+    def __init__(self, name, cost, image_path, power, toughness):
+        super().__init__(name, cost, image_path)
         self.power = power
         self.toughness = toughness
         self.tapped = False
@@ -46,8 +47,8 @@ class Creature(MagicCard):
 
 
 class Land(MagicCard):
-    def __init__(self, name):
-        super().__init__(name, None)
+    def __init__(self, name, image_path):
+        super().__init__(name, None, image_path)
         self.tapped = False
 
 

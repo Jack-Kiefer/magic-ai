@@ -10,6 +10,13 @@ import game
 from pettingzoo import AECEnv
 
 
+def flatten(matrix):
+    flat_set = set()
+    for row in matrix:
+        flat_set = flat_set.union(set(row))
+    return flat_set
+
+
 class mtg_env(AECEnv):
     metadata = {
         "name": "mtg_env_v0",
@@ -50,12 +57,7 @@ class mtg_env(AECEnv):
             agent: MultiDiscrete(max_values)
             for agent in self.agents
         }
-
-    def flatten(self, matrix):
-        flat_set = set()
-        for row in matrix:
-            flat_set.union(set(row))
-        return flat_set
+        self.reset()
 
     def generate_action_mask(self, agent):
         # No legal action if not your play
@@ -95,9 +97,8 @@ class mtg_env(AECEnv):
                     if all([
                         self.distinct_creatures[i] in self.state.attackingCreatures,
                         self.distinct_creatures[j] in self.state.untappedCreatures(agent),
-                        self.distinct_creatures[j] not in self.flatten(self.state.blockingCreatures.values())
+                        self.distinct_creatures[j] not in flatten([*self.state.blockingCreatures.values()])
                     ]):
-                        print(self.state.blockingCreatures)
                         mask[j + self.num_distinct_creatures*i+ last] = 1
         return mask
 
@@ -163,8 +164,8 @@ class mtg_env(AECEnv):
             self.state.addAttacker(attacker)
         elif action_type == "block":
             attacker, blocker = action_index
-            print(self.distinct_creatures[attacker].name, self.distinct_creatures[blocker].name)
-            print(self.state.creatures[1 - pl], self.state.creatures[pl])
+            # print(self.distinct_creatures[attacker].name, self.distinct_creatures[blocker].name)
+            # print(self.state.creatures[1 - pl], self.state.creatures[pl])
             attacker = next((c for c in self.state.creatures[1 - pl] if c.name == self.distinct_creatures[attacker].name))
             blocker = next((c for c in self.state.creatures[pl] if c.name == self.distinct_creatures[blocker].name))
             self.state.addBlocker(attacker, blocker)
@@ -185,47 +186,50 @@ class mtg_env(AECEnv):
         self._agent_selector = self.state.priority
         self.agent_selection = self.state.priority
 
-    def render(self):
-        print(f"Current turn: Player {self.state.turn + 1}")
-        print(f"Phase: {['Main phase 1', 'Declare attackers', 'Declare blockers', 'Main phase 2'][self.state.phase]}")
-        print(f"Priority: Player {self.state.priority + 1}\n")
+    def render(self, mode='human'):
+        pass
 
-        for agent in self.agents:
-            player_label = f"Player {agent + 1} (Life: {self.state.life[agent]})"
-            if self.state.priority == agent:
-                player_label += " <- Priority"
-            print(player_label)
-
-            lands_display = "Lands: [" + "U"*self.state.untappedLands[agent] + "T"*(self.state.totalLands[agent] - self.state.untappedLands[agent]) + "]"
-            print(lands_display)
-
-            print("Hand: ", end="")
-            if self.state.hands[agent]:
-                print(", ".join([f"{card.name}" for card in self.state.hands[agent]]))
-            else:
-                print("Empty")
-
-            print("\nBoard:")
-            if self.state.creatures[agent]:
-                for creature in self.state.creatures[agent]:
-                    status = "tapped" if creature.tapped else "untapped"
-                    print(f"{creature.name} ({creature.power}/{creature.toughness}, {status})")
-            else:
-                print("No creatures on board")
-
-            print("\n")
-
-        print("Combat Zone:")
-        if self.state.phase in [1, 2]:  # Attackers and blockers phase
-            for attacker in self.state.attackingCreatures:
-                blockers = self.state.blockingCreatures.get(attacker, [])
-                if blockers:
-                    blocker_names = ", ".join([blocker.name for blocker in blockers])
-                    print(f"{attacker.name} (attacking) is blocked by {blocker_names}")
-                else:
-                    print(f"{attacker.name} (attacking) is unblocked")
-
-        print("\n" + "=" * 50 + "\n")
+    # def render(self):
+    #     print(f"Current turn: Player {self.state.turn + 1}")
+    #     print(f"Phase: {['Main phase 1', 'Declare attackers', 'Declare blockers', 'Main phase 2'][self.state.phase]}")
+    #     print(f"Priority: Player {self.state.priority + 1}\n")
+    #
+    #     for agent in self.agents:
+    #         player_label = f"Player {agent + 1} (Life: {self.state.life[agent]})"
+    #         if self.state.priority == agent:
+    #             player_label += " <- Priority"
+    #         print(player_label)
+    #
+    #         lands_display = "Lands: [" + "U"*self.state.untappedLands[agent] + "T"*(self.state.totalLands[agent] - self.state.untappedLands[agent]) + "]"
+    #         print(lands_display)
+    #
+    #         print("Hand: ", end="")
+    #         if self.state.hands[agent]:
+    #             print(", ".join([f"{card.name}" for card in self.state.hands[agent]]))
+    #         else:
+    #             print("Empty")
+    #
+    #         print("\nBoard:")
+    #         if self.state.creatures[agent]:
+    #             for creature in self.state.creatures[agent]:
+    #                 status = "tapped" if creature.tapped else "untapped"
+    #                 print(f"{creature.name} ({creature.power}/{creature.toughness}, {status})")
+    #         else:
+    #             print("No creatures on board")
+    #
+    #         print("\n")
+    #
+    #     print("Combat Zone:")
+    #     if self.state.phase in [1, 2]:  # Attackers and blockers phase
+    #         for attacker in self.state.attackingCreatures:
+    #             blockers = self.state.blockingCreatures.get(attacker, [])
+    #             if blockers:
+    #                 blocker_names = ", ".join([blocker.name for blocker in blockers])
+    #                 print(f"{attacker.name} (attacking) is blocked by {blocker_names}")
+    #             else:
+    #                 print(f"{attacker.name} (attacking) is unblocked")
+    #
+    #     print("\n" + "=" * 50 + "\n")
 
     def close(self):
         pass
