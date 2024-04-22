@@ -57,5 +57,6 @@ def debug_environment(env):
 
 # Usage example:
 if __name__ == "__main__":
-    environment = mtg_env.mtg_env()
-    debug_environment(environment)
+    environment = mtg_env.raw_env()
+    api_test(environment, num_cycles=1000, verbose_progress=False)
+    #debug_environment(environment)

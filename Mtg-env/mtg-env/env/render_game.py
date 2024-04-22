@@ -1,12 +1,27 @@
+import os
 import tkinter as tk
+
+import numpy as np
+import supersuit as ss
 from PIL import Image, ImageTk
 import threading
 import time
-from mtg_env import mtg_env
+import glob
+
+from pettingzoo.utils import aec_to_parallel
+from sb3_contrib import MaskablePPO
+
+from mtg_env import raw_env
+
+import torch
+from stable_baselines3.ppo import CnnPolicy
+from stable_baselines3 import PPO
+
 
 
 class MTGRender:
-    def __init__(self, env):
+    def __init__(self, env, model):
+        self.model = model
         self.env = env
         self.root = tk.Tk()
         self.root.title("Magic: The Gathering Game Environment")
@@ -27,6 +42,10 @@ class MTGRender:
         self.action_frame = tk.Frame(self.root)
         self.action_frame.pack(fill=tk.X, side=tk.BOTTOM)
         self.action_buttons = []
+        self.env_thread = threading.Thread(target=self.run_environment)
+        self.env_thread.daemon = True
+        self.env_thread.start()
+
 
     def load_image(self, path):
         image = Image.open(path)
@@ -35,8 +54,10 @@ class MTGRender:
 
     def load_tapped_image(self, path):
         image = Image.open(path)
-        image = image.rotate(270)
-        image = image.resize((self.cardh, self.cardw))
+        image = image.rotate(270, expand=True)  # expand=True to adjust the size after rotation
+        original_aspect = image.width / image.height
+        new_height = int(self.cardw / original_aspect)
+        image = image.resize((self.cardw, new_height))  # adjust height to maintain aspect ratio
         return ImageTk.PhotoImage(image)
 
     def load_images(self):
@@ -47,8 +68,9 @@ class MTGRender:
     def calculateStart(self, num_cards):
         return 100 + (self.w-100 - num_cards*(self.cardw + self.margin)) / 2
 
-    def draw_player_area(self, player, hand_y, lands_y, creatures_y):
+    def draw_player_area(self, player, hand_y, lands_y, creatures_y, reward_y):
         self.canvas.create_text(50, hand_y+self.cardh/2, text=str(self.env.state.life[player]), fill="black", font=('Helvetica 30 bold'))
+        self.canvas.create_text(50, reward_y, text=str(self.env._cumulative_rewards[player]), fill="black",font=('Helvetica 20 bold'))
 
         start = self.calculateStart(len(self.env.state.hands[player]))
         for card in self.env.state.hands[player]:
@@ -83,8 +105,8 @@ class MTGRender:
             self.canvas.create_rectangle(0, 0, self.w, self.h/2, fill="#FDF3B1")
         else:
             self.canvas.create_rectangle(0, self.h / 2, self.w, self.h, fill="#FDF3B1")
-        self.draw_player_area(0, 25, 150, 275)
-        self.draw_player_area(1, 650, 525, 400)
+        self.draw_player_area(0, 25, 150, 275, 300)
+        self.draw_player_area(1, 650, 525, 400, 350)
 
     def update(self):
         self.draw_board()
@@ -123,11 +145,37 @@ class MTGRender:
                 self.action_buttons.append(button)
 
     def run(self):
-        self.update()
-        self.update_actions()
         self.root.mainloop()
 
+    def run_environment(self):
+        while True:
+            self.update()
+            obs, reward, termination, truncation, info = env.last()
+            observation, action_mask = obs.values()
+            if self.env.agent_selection == 0:
+                act = int(model.predict(observation, action_masks=action_mask, deterministic=False)[0])
+            else:
+                available_actions = [i for i, available in enumerate(action_mask) if available]
+                act = np.random.choice(available_actions)
+
+            self.env.step(act)
+            time.sleep(.2)
+
+            if any(self.env.terminations.values()):
+                print("Game has ended.")
+                break
+
 if __name__ == "__main__":
-    env = mtg_env()
-    renderer = MTGRender(env)
-    renderer.run()
+    env = raw_env()  # Your custom MTG environment
+
+    try:
+        latest_policy = max(
+            glob.glob(f"{env.metadata['name']}*.zip"), key=os.path.getctime
+        )
+    except ValueError:
+        print("Policy not found.")
+        exit(0)
+
+    model = MaskablePPO.load(latest_policy)
+    renderer = MTGRender(env, model)
+    renderer.run()  # Start the GUI loop if needed

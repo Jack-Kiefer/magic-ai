@@ -52,6 +52,10 @@ class Land(MagicCard):
         self.tapped = False
 
 
+def rewardFn(life, mana, cards):
+    return life + 3 * cards + 2 * mana
+
+
 class GameState:
     def __init__(self, decks):
         self.decks = decks
@@ -85,11 +89,14 @@ class GameState:
         self.blockingCreatures = {attacker: [] for attacker in self.attackingCreatures}
 
     def declareBlock(self, pl):
+        reward = 0
         for attacker, blockers in self.blockingCreatures.items():
-            self.resolveAttack(attacker, blockers, 1 - pl)
+            reward += self.resolveAttack(attacker, blockers, 1 - pl)
         self.phase = 3
+        return reward
 
     def passPriority(self, pl):
+        reward = 0
         if pl == self.turn:
             if self.phase == 0:
                 self.phase += 1
@@ -105,8 +112,9 @@ class GameState:
                 self.startTurn(self.turn)
         else:
             if self.phase == 2:
-                self.declareBlock(pl)
+                reward = self.declareBlock(pl)
                 self.priority = 1 - self.priority
+        return reward
 
     def playCard(self, card, pl):
         if card in self.hands[pl]:
@@ -133,19 +141,24 @@ class GameState:
             self.hands[pl].append(self.decks[pl].pop())
 
     def resolveAttack(self, attacker, blockers, pl):
+        life, mana, cards = 0, 0, 0
         if len(blockers) == 0:
-            # print(f"{self.name} doesn't block {attacker.name}")
             self.life[1 - pl] -= attacker.power
+            life -= attacker.power
         else:
-            # print(f"{self.name} blocks {attacker.name} with {blockers}")
             damage = attacker.power
             i = 0
             while i < len(blockers) and blockers[i].toughness <= damage:
                 self.creatures[1 - pl].remove(blockers[i])
+                mana -= blockers[i].cost
+                cards -= 1
                 damage -= blockers[i].toughness
                 i += 1
             if blockers != [] and attacker.toughness <= sum([blocker.power for blocker in blockers]):
                 self.creatures[pl].remove(attacker)
+                mana += attacker.cost
+                cards += 1
+        return rewardFn(life, mana, cards)
 
     def untappedCreatures(self, pl):
         return [creature for creature in self.creatures[pl] if not creature.tapped]

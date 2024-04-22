@@ -3,6 +3,7 @@ from copy import copy
 
 import numpy as np
 from gymnasium.spaces import Discrete, MultiDiscrete
+from pettingzoo.utils import wrappers
 
 import rungame
 import game
@@ -16,10 +17,20 @@ def flatten(matrix):
         flat_set = flat_set.union(set(row))
     return flat_set
 
+def env(**kwargs):
+    env = raw_env(**kwargs)
+    env = wrappers.TerminateIllegalWrapper(env, illegal_reward=-1)
+    env = wrappers.AssertOutOfBoundsWrapper(env)
+    env = wrappers.OrderEnforcingWrapper(env)
+    return env
 
-class mtg_env(AECEnv):
+
+class raw_env(AECEnv):
     metadata = {
+        "render_modes": ["human", "rgb_array"],
         "name": "mtg_env_v0",
+        "is_parallelizable": False,
+        "render_fps": 2,
     }
 
     def __init__(self):
@@ -56,6 +67,19 @@ class mtg_env(AECEnv):
         }
         self.reset()
 
+    def reset(self, seed=None, options=None):
+        self.agents = copy(self.possible_agents)
+        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()])
+        self.rewards = {agent: 0 for agent in self.agents}
+        self._cumulative_rewards = {agent: 0 for agent in self.agents}
+        self.terminations = {agent: False for agent in self.agents}
+        self.truncations = {a: False for a in self.agents}
+        self.infos = {agent: {"action_mask": self.generate_action_mask(agent)} for agent in self.agents}
+        self._agent_selector = self.state.priority
+        self.agent_selection = self.state.priority
+
+        self.observations = {agent: self.observe(agent)["observation"] for agent in self.agents}
+
     def generate_action_mask(self, agent):
         # No legal action if not your play
         if self.state.priority != agent:
@@ -86,9 +110,6 @@ class mtg_env(AECEnv):
 
         last += self.num_distinct_creatures
         if self.state.phase == 2:
-            # print(self.state.attackingCreatures)
-            # print(self.state.untappedCreatures(agent))
-            # print(self.state.blockingCreatures)
             for i in range(self.num_distinct_creatures):
                 for j in range(self.num_distinct_creatures):
                     if all([
@@ -120,19 +141,6 @@ class mtg_env(AECEnv):
         blocker_index = action % self.num_distinct_creatures
         return "block", (attacker_index, blocker_index)
 
-    def reset(self, seed=None, options=None):
-        self.agents = copy(self.possible_agents)
-        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()])
-        self.rewards = {agent: 0 for agent in self.agents}
-        self._cumulative_rewards = {agent: 0 for agent in self.agents}
-        self.terminations = {agent: False for agent in self.agents}
-        self.truncations = {a: False for a in self.agents}
-        self.infos = {agent: {"action_mask": self.generate_action_mask(agent)} for agent in self.agents}
-        self._agent_selector = self.state.priority
-        self.agent_selection = self.state.priority
-
-        self.observations = {agent: self.observe(agent) for agent in self.agents}
-
     def convert_to_multidiscrete(self, cards, total_cards):
         obs = np.zeros(len(total_cards), dtype=int)
         for card in cards:
@@ -141,47 +149,63 @@ class mtg_env(AECEnv):
         return obs
 
     def observe(self, agent):
-        return np.concatenate([
+        obs = np.concatenate([
             self.convert_to_multidiscrete(self.state.hands[agent], self.distinct_cards),
             self.convert_to_multidiscrete(self.state.creatures[agent], self.distinct_creatures),
             self.convert_to_multidiscrete(self.state.creatures[1 - agent], self.distinct_creatures),
-            np.array([self.state.totalLands[agent], self.state.life[agent], self.state.life[1 - agent]])
+            np.array([self.state.totalLands[agent], self.state.life[agent], self.state.life[1 - agent]],
+                     dtype=np.float32)
         ])
+        return {"observation":obs.astype(np.float32), "action_mask":self.generate_action_mask(agent)}
 
     def step(self, action):
         # self.render()
         action_type, action_index = self.mask_to_action(action)
         pl = self.state.priority
         if action_type == "pass_priority":
-            self.state.passPriority(pl)
+            reward = self.state.passPriority(pl)
+            self.rewards[pl] += reward
+            self.rewards[1-pl] -= reward
+            self._accumulate_rewards()
         elif action_type == "play_card":
-            self.state.playCard(self.distinct_cards[action_index], pl)
+            self.state.playCard(copy(self.distinct_cards[action_index]), pl)
+            self.rewards[pl] += 5
         elif action_type == "attack":
             attacker = next((c for c in self.state.creatures[pl] if c.name == self.distinct_creatures[action_index].name))
             self.state.addAttacker(attacker)
         elif action_type == "block":
             attacker, blocker = action_index
-            # print(self.distinct_creatures[attacker].name, self.distinct_creatures[blocker].name)
-            # print(self.state.creatures[1 - pl], self.state.creatures[pl])
             attacker = next((c for c in self.state.creatures[1 - pl] if c.name == self.distinct_creatures[attacker].name))
             blocker = next((c for c in self.state.creatures[pl] if c.name == self.distinct_creatures[blocker].name))
             self.state.addBlocker(attacker, blocker)
         if self.state.life[pl] <= 0 or len(self.state.decks[pl]) == 0:
-            self.rewards[pl] += -1
-            self.rewards[1 - pl] += 1
+            self.rewards[pl] += -1000
+            self.rewards[1 - pl] += 1000
             self.terminations = {0: True, 1: True}
             self._accumulate_rewards()
+            if (pl == 0):
+                print("Loss")
+                print(f"My reward {self._cumulative_rewards[0]}, their reward {self._cumulative_rewards[1]}")
+            else:
+                print("Win")
+                print(f"My reward {self._cumulative_rewards[0]}, their reward {self._cumulative_rewards[1]}")
             self.reset()
-        if self.state.life[1 - pl] <= 0 or len(self.state.decks[1-pl]) == 0:
-            self.rewards[1 - pl] = 1
-            self.rewards[pl] = 0
-            self.terminations = {0: True, 1: True}
-            self._accumulate_rewards()
-            self.reset()
+        # if self.state.life[1 - pl] <= 0 or len(self.state.decks[1-pl]) == 0:
+        #     self.rewards[1 - pl] = -1
+        #     self.rewards[pl] = 1
+        #     self.terminations = {0: True, 1: True}
+        #     self._accumulate_rewards()
+        #     self.reset()
+        #     if (pl == 1):
+        #         print("Loss1")
+        #     else:
+        #         print("Win1")
         self.observations = {agent: self.observe(agent) for agent in self.agents}
         self.infos = {agent: {"action_mask": self.generate_action_mask(agent)} for agent in self.agents}
         self._agent_selector = self.state.priority
         self.agent_selection = self.state.priority
+        self._accumulate_rewards()
+        self.rewards = {agent: 0 for agent in self.agents}
 
     def render(self, mode='human'):
         pass
