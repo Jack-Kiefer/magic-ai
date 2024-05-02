@@ -77,16 +77,17 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
     model = MaskablePPO(
         MaskableActorCriticPolicy,
         env,
-        verbose=2,
-        learning_rate=0.0003,  # Increased learning rate
-        n_steps=4096,  # Increased steps per update
-        batch_size=256,  # Increased batch size
-        gamma=0.99,  # Ensure gamma is appropriately set
-        gae_lambda=0.95,  # Good for smoothing the advantage function
-        clip_range=0.2,  # Increased clip range
-        ent_coef=0.03,  # Increased entropy coefficient to encourage exploration
-        vf_coef=0.5  # Value function coefficient
+        verbose=1,
+        learning_rate=0.001,
+        n_steps=50,
+        batch_size=5,
+        gamma=0.99,
+        gae_lambda=0.95,
+        clip_range=0.1,
+        ent_coef=0.1,
+        vf_coef=0.8
     )
+
     model.set_random_seed(seed)
     model.learn(total_timesteps=steps)
 
@@ -105,4 +106,6 @@ if __name__ == "__main__":
     env_kwargs = {}
 
     # Train a model against itself (takes ~20 seconds on a laptop CPU)
-    train_action_mask(env_fn, steps=100000, seed=0, **env_kwargs)
+    train_action_mask(env_fn, steps=10000, seed=0, **env_kwargs)
+
+

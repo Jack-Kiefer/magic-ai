@@ -19,7 +19,7 @@ green_creatures = [
         ("Axebane Beast", 4, "images/axebane-beast.png", 3, 4),
         ("Vine Mare", 4, "images/vine-mare.png", 5, 3),
         ("Thornhide Wolves", 5, "images/thornhide-wolves.png", 4, 5),
-        ("Craw Wurm", 6, "images/craw-wurm.png", 6, 5),
+        ("Craw Wurm", 6, "images/craw-wurm.png", 6, 4),
         ("Vastwood Gorger", 6, "images/vastwood-gorger.png", 5, 6),
         ("Axebane Stag", 7, "images/axebane-stag.png", 6, 7),
     ]
@@ -70,7 +70,7 @@ def runTurn(player1, player2, verbose):
 def base_score(mana, cards, life, defenderLife):
     if defenderLife - life <= 0:
         return 1000
-    return life * (10 / (defenderLife - life)) + 3 * cards + 2 * mana
+    return life * (10 / (defenderLife - life)) + 30 * cards
 
 def aggressive_score(mana, cards, life, defenderLife):
     # Prioritize attacking and reducing defender life

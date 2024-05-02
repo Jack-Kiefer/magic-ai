@@ -52,10 +52,6 @@ class Land(MagicCard):
         self.tapped = False
 
 
-def rewardFn(life, mana, cards):
-    return life + 3 * cards + 2 * mana
-
-
 class GameState:
     def __init__(self, decks):
         self.decks = decks
@@ -140,6 +136,12 @@ class GameState:
         for _ in range(n):
             self.hands[pl].append(self.decks[pl].pop())
 
+    def rewardFn(self, life, mana, cards, pl):
+        if self.life[1-pl] <= 0:
+            return -100
+        else:
+            return life * (10 / self.life[1-pl]) + 3 * cards + 2 * mana
+
     def resolveAttack(self, attacker, blockers, pl):
         life, mana, cards = 0, 0, 0
         if len(blockers) == 0:
@@ -158,7 +160,7 @@ class GameState:
                 self.creatures[pl].remove(attacker)
                 mana += attacker.cost
                 cards += 1
-        return rewardFn(life, mana, cards)
+        return self.rewardFn(life, mana, cards, pl)
 
     def untappedCreatures(self, pl):
         return [creature for creature in self.creatures[pl] if not creature.tapped]

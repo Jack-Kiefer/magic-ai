@@ -70,7 +70,7 @@ class MTGRender:
 
     def draw_player_area(self, player, hand_y, lands_y, creatures_y, reward_y):
         self.canvas.create_text(50, hand_y+self.cardh/2, text=str(self.env.state.life[player]), fill="black", font=('Helvetica 30 bold'))
-        self.canvas.create_text(50, reward_y, text=str(self.env._cumulative_rewards[player]), fill="black",font=('Helvetica 20 bold'))
+        self.canvas.create_text(50, reward_y, text=str(int(self.env._cumulative_rewards[player])), fill="black",font=('Helvetica 20 bold'))
 
         start = self.calculateStart(len(self.env.state.hands[player]))
         for card in self.env.state.hands[player]:
@@ -159,7 +159,7 @@ class MTGRender:
                 act = np.random.choice(available_actions)
 
             self.env.step(act)
-            time.sleep(.2)
+            time.sleep(.01)
 
             if any(self.env.terminations.values()):
                 print("Game has ended.")

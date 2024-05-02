@@ -179,8 +179,8 @@ class raw_env(AECEnv):
             blocker = next((c for c in self.state.creatures[pl] if c.name == self.distinct_creatures[blocker].name))
             self.state.addBlocker(attacker, blocker)
         if self.state.life[pl] <= 0 or len(self.state.decks[pl]) == 0:
-            self.rewards[pl] += -1000
-            self.rewards[1 - pl] += 1000
+            self.rewards[pl] += -100
+            self.rewards[1 - pl] += 100
             self.terminations = {0: True, 1: True}
             self._accumulate_rewards()
             if (pl == 0):
@@ -190,16 +190,16 @@ class raw_env(AECEnv):
                 print("Win")
                 print(f"My reward {self._cumulative_rewards[0]}, their reward {self._cumulative_rewards[1]}")
             self.reset()
-        # if self.state.life[1 - pl] <= 0 or len(self.state.decks[1-pl]) == 0:
-        #     self.rewards[1 - pl] = -1
-        #     self.rewards[pl] = 1
-        #     self.terminations = {0: True, 1: True}
-        #     self._accumulate_rewards()
-        #     self.reset()
-        #     if (pl == 1):
-        #         print("Loss1")
-        #     else:
-        #         print("Win1")
+        if self.state.life[1 - pl] <= 0 or len(self.state.decks[1-pl]) == 0:
+            self.rewards[1 - pl] = -1
+            self.rewards[pl] = 1
+            self.terminations = {0: True, 1: True}
+            self._accumulate_rewards()
+            self.reset()
+            # if (pl == 1):
+            #     print("Loss1")
+            # else:
+            #     print("Win1")
         self.observations = {agent: self.observe(agent) for agent in self.agents}
         self.infos = {agent: {"action_mask": self.generate_action_mask(agent)} for agent in self.agents}
         self._agent_selector = self.state.priority
