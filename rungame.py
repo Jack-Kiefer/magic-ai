@@ -70,6 +70,7 @@ def runTurn(player1, player2, verbose):
 def base_score(mana, cards, life, defenderLife):
     if defenderLife - life <= 0:
         return 1000
+    # life * (10 / (defenderLife - life))
     return life * (10 / (defenderLife - life)) + 30 * cards
 
 def aggressive_score(mana, cards, life, defenderLife):

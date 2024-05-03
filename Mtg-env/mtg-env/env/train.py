@@ -55,7 +55,16 @@ def mask_fn(env):
     # Do whatever you'd like in this function to return the action mask
     # for the current env. In this example, we assume the env has a
     # helpful method we can rely on.
-    return env.action_mask()
+    mask = env.action_mask()
+    return mask
+
+def linear_schedule(initial_value):
+    """
+    Creates a function that returns a linearly decreasing learning rate from the initial value.
+    """
+    def func(progress_remaining):
+        return progress_remaining * initial_value
+    return func
 
 
 def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
@@ -74,18 +83,22 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
     # with ActionMasker. If the wrapper is detected, the masks are automatically
     # retrieved and used when learning. Note that MaskablePPO does not accept
     # a new action_mask_fn kwarg, as it did in an earlier draft.
+
+    initial_learning_rate = 0.002
+    learning_rate = linear_schedule(initial_learning_rate)
+
     model = MaskablePPO(
         MaskableActorCriticPolicy,
         env,
         verbose=1,
-        learning_rate=0.001,
-        n_steps=50,
-        batch_size=5,
-        gamma=0.99,
-        gae_lambda=0.95,
-        clip_range=0.1,
-        ent_coef=0.1,
-        vf_coef=0.8
+        learning_rate=learning_rate,
+        n_steps=10,
+        batch_size=2,
+        gamma=0.999,
+        gae_lambda=0.99,
+        clip_range=0.3,
+        ent_coef=0.01,
+        vf_coef=0.9
     )
 
     model.set_random_seed(seed)
@@ -106,6 +119,6 @@ if __name__ == "__main__":
     env_kwargs = {}
 
     # Train a model against itself (takes ~20 seconds on a laptop CPU)
-    train_action_mask(env_fn, steps=10000, seed=0, **env_kwargs)
+    train_action_mask(env_fn, steps=1000, seed=0, **env_kwargs)
 
 
