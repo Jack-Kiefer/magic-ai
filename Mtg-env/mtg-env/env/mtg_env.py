@@ -33,10 +33,11 @@ class raw_env(AECEnv):
         "render_fps": 2,
     }
 
-    def __init__(self, rewardFn):
+    def __init__(self, rewardFn, phase):
         super().__init__()
+        self.trainPhase = phase
         self.observations = None
-        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()], rewardFn)
+        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()])
         self._agent_selector = None
         self.agent_selection = None
         self.possible_agents = [0, 1]
@@ -52,13 +53,14 @@ class raw_env(AECEnv):
 
         # action masking
         # 0 - pass priority
-        # 1-17 - play card
-        # 18-33 - attack with creature
-        # 34-289 - block with creature on a creature
+        # 1 - mulligan
+        # 2-18 - play card
+        # 19-34 - attack with creature
+        # 35-290 - block with creature on a creature
         # self.action_space = Discrete(1 + self.num_distinct_cards + self.num_distinct_creatures + self.num_distinct_creatures^2)
         self._action_spaces = {
             agent: Discrete(
-                1 + self.num_distinct_cards + self.num_distinct_creatures + self.num_distinct_creatures ** 2)
+                2 + self.num_distinct_cards + self.num_distinct_creatures + self.num_distinct_creatures ** 2)
             for agent in self.agents}
 
         max_values = np.array([29] + [3] * 5 * self.num_distinct_creatures + 2*[29] + [21] + [21] + [2])
@@ -70,7 +72,7 @@ class raw_env(AECEnv):
 
     def reset(self, seed=None, options=None):
         self.agents = copy(self.possible_agents)
-        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()], self.rewardFn)
+        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()])
         self.rewards = {agent: 0 for agent in self.agents}
         self._cumulative_rewards = {agent: 0 for agent in self.agents}
         self.terminations = {agent: False for agent in self.agents}
@@ -88,6 +90,9 @@ class raw_env(AECEnv):
         mask = np.zeros(self._action_spaces[agent].n, dtype=np.int8)
         mask[0] = 1
         last = 1
+        if self.state.phase == -1 and self.state.keptHand[agent] == 0 and len(self.state.hands[agent]) > 0:
+            mask[1] = 1
+        last += 1
         if self.state.phase in [0, 3]:
             for i in range(self.num_distinct_cards):
                 card = self.distinct_cards[i]
@@ -123,6 +128,10 @@ class raw_env(AECEnv):
         if action == 0:
             return "pass_priority", 0
         action -= 1  # Adjust index to start at 0 for actions following pass_priority
+
+        if action == 0:
+            return "mulligan", 0
+        action -= 1
 
         if action < self.num_distinct_cards:
             return "play_card", action  # Direct mapping for play card actions
@@ -165,12 +174,18 @@ class raw_env(AECEnv):
         action_type, action_index = self.mask_to_action(action)
         pl = self.state.priority
         if action_type == "pass_priority":
-            reward = self.state.passPriority(pl)
-            self.rewards[pl] += reward
-            self.rewards[1-pl] -= reward
+            life, mana, cards = self.state.passPriority(pl)
+            if self.trainPhase == 1:
+                self.rewards[pl] += self.rewardFn(life, mana, cards)
+                self.rewards[1-pl] -= self.rewardFn(life, mana, cards)
+        if action_type == "mulligan":
+            self.state.mulligan(pl)
+            if self.trainPhase == 1:
+                self.rewards[pl] -= 5
         elif action_type == "play_card":
             self.state.playCard(copy(self.distinct_cards[action_index]), pl)
-            self.rewards[pl] += 5
+            if self.trainPhase == 1:
+                self.rewards[pl] += 5
         elif action_type == "attack":
             attacker = next((c for c in self.state.creatures[pl] if c.name == self.distinct_creatures[action_index].name))
             self.state.addAttacker(pl, attacker)

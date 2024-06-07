@@ -140,6 +140,8 @@ class MTGRender:
 
     def getActionDesc(self, action):
         name, data = self.env.mask_to_action(action)
+        if name == "mulligan":
+            return "Mulligan"
         if name == "pass_priority":
             return "Pass Priority"
         if name == "play_card":
@@ -189,7 +191,7 @@ class MTGRender:
                 break
 
 if __name__ == "__main__":
-    env = raw_env(train.rewardFn)  # Your custom MTG environment
+    env = raw_env(train.rewardFn, 1)  # Your custom MTG environment
 
     try:
         latest_policy = max(

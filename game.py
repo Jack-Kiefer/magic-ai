@@ -57,8 +57,7 @@ class Land(MagicCard):
 
 
 class GameState:
-    def __init__(self, decks, rewardFn):
-        self.rewardFn = rewardFn
+    def __init__(self, decks):
         self.decks = decks
         self.hands = [[], []]
         self.life = [20, 20]
@@ -75,8 +74,9 @@ class GameState:
         self.drawCards(7, 1)
         self.turn = random.choice([0, 1])
         self.priority = self.turn
-        # 'main1', 'declare_attackers', 'declare_blockers', 'main2'
-        self.phase = 0
+        # beginning 'main1', 'declare_attackers', 'declare_blockers', 'main2'
+        self.phase = -1
+        self.keptHand = [0, 0]
 
     def addBlocker(self, pl, attacker, blocker):
         self.creatures[pl].remove(blocker)
@@ -93,19 +93,37 @@ class GameState:
         self.blockingCreatures = [[attacker,[]] for attacker in self.attackingCreatures]
 
     def declareBlock(self, pl):
-        reward = 0
+        total_life, total_mana, total_cards = 0, 0, 0
         for i in range(len(self.blockingCreatures)):
-            reward += self.resolveAttack(i, 1 - pl)
-        self.creatures[1-pl] += self.attackingCreatures
-        self.creatures[pl] += flatten(map(lambda x : x[1], self.blockingCreatures))
+            life, mana, cards = self.resolveAttack(i, 1 - pl)
+            total_life += life
+            total_mana += mana
+            total_cards += cards
+        self.creatures[1 - pl] += self.attackingCreatures
+        self.creatures[pl] += flatten(map(lambda x: x[1], self.blockingCreatures))
         self.attackingCreatures = []
         self.blockingCreatures = []
         self.phase = 3
-        return reward
+        return total_life, total_mana, total_cards
+
+    def mulligan(self, pl):
+        handSize = len(self.hands[pl])
+        self.decks[pl] += self.hands[pl]
+        self.hands[pl] = []
+        self.shuffleDeck(pl)
+        self.drawCards(handSize-1, pl)
+        self.priority = 1 - self.priority
 
     def passPriority(self, pl):
-        reward = 0
-        if pl == self.turn:
+        life, mana, cards = 0, 0, 0
+        if self.phase == -1:
+            self.keptHand[pl] = 1
+            if self.keptHand[1 - pl] == 1:
+                self.phase = 0
+                self.priority = self.turn
+            else:
+                self.priority = 1 - self.priority
+        elif pl == self.turn:
             if self.phase == 0:
                 self.phase += 1
             elif self.phase == 1:
@@ -120,9 +138,9 @@ class GameState:
                 self.startTurn(self.turn)
         else:
             if self.phase == 2:
-                reward = self.declareBlock(pl)
+                life, mana, cards = self.declareBlock(pl)
                 self.priority = 1 - self.priority
-        return reward
+        return life, mana, cards
 
     def playCard(self, card, pl):
         if card in self.hands[pl]:
@@ -165,7 +183,7 @@ class GameState:
                 cards -= 1
                 damage -= blockers[0].toughness
                 blockers.remove(blockers[0])
-        return self.rewardFn(life, mana, cards)
+        return life, mana, cards
 
     def untappedCreatures(self, pl):
         return [creature for creature in self.creatures[pl] if not creature.tapped]

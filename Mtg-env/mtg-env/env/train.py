@@ -87,7 +87,15 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
     )
 
     model.set_random_seed(seed)
-    model.learn(total_timesteps=steps)
+
+    model.learn(total_timesteps=steps//2)
+    env_kwargs = {'rewardFn':rewardFn, 'phase':2}
+    env = env_fn.env(**env_kwargs)
+    env = SB3ActionMaskWrapper(env)
+    env.reset(seed=seed)
+    env = ActionMasker(env, mask_fn)
+    model.set_env(env)
+    model.learn(total_timesteps=steps//2)
 
     model.save(f"{env.unwrapped.metadata.get('name')}_{time.strftime('%Y%m%d-%H%M%S')}")
 
@@ -101,9 +109,9 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
 if __name__ == "__main__":
     env_fn = mtg_env_v0
 
-    env_kwargs = {'rewardFn':rewardFn}
+    env_kwargs = {'rewardFn':rewardFn, 'phase':1}
 
     # Train a model against itself
-    train_action_mask(env_fn, steps=10000, seed=0, **env_kwargs)
+    train_action_mask(env_fn, steps=20000, seed=0, **env_kwargs)
 
 
