@@ -66,6 +66,13 @@ def linear_schedule(initial_value):
         return progress_remaining * initial_value
     return func
 
+def rewardFn(life, mana, cards, pl):
+    if life[1-pl] <= 0:
+        return -1000
+    else:
+        # life * (10 / self.life[1 - pl])
+        return life * (10 / life[1 - pl]) + 50 * cards + 2 * mana
+
 
 def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
     """Train a single model to play as each agent in a zero-sum game environment using invalid action masking."""
@@ -92,13 +99,6 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
         env,
         verbose=1,
         learning_rate=learning_rate,
-        n_steps=10,
-        batch_size=2,
-        gamma=0.999,
-        gae_lambda=0.99,
-        clip_range=0.3,
-        ent_coef=0.01,
-        vf_coef=0.9
     )
 
     model.set_random_seed(seed)
@@ -116,9 +116,9 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
 if __name__ == "__main__":
     env_fn = mtg_env_v0
 
-    env_kwargs = {}
+    env_kwargs = {'rewardfn':rewardFn}
 
     # Train a model against itself (takes ~20 seconds on a laptop CPU)
-    train_action_mask(env_fn, steps=1000, seed=0, **env_kwargs)
+    train_action_mask(env_fn, steps=100000, seed=0, **env_kwargs)
 
 

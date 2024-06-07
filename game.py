@@ -57,7 +57,8 @@ class Land(MagicCard):
 
 
 class GameState:
-    def __init__(self, decks):
+    def __init__(self, decks, rewardFn):
+        self.rewardFn = rewardFn
         self.decks = decks
         self.hands = [[], []]
         self.life = [20, 20]
@@ -146,13 +147,6 @@ class GameState:
             return
         for _ in range(n):
             self.hands[pl].append(self.decks[pl].pop())
-
-    def rewardFn(self, life, mana, cards, pl):
-        if self.life[1-pl] <= 0:
-            return -100
-        else:
-            # life * (10 / self.life[1 - pl])
-            return life * (10 / self.life[1 - pl]) + 50 * cards + 2 * mana
 
     def resolveAttack(self, i, pl):
         attacker, blockers = self.blockingCreatures[i]
