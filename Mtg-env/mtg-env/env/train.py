@@ -5,18 +5,14 @@ For more information about invalid action masking in SB3, see https://sb3-contri
 
 Author: Elliot (https://github.com/elliottower)
 """
-import glob
-import os
 import time
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.wrappers import ActionMasker
-from render_game import MTGRender
 
 import pettingzoo.utils
 import mtg_env_v0
-from pettingzoo.classic import connect_four_v3
 
 
 
