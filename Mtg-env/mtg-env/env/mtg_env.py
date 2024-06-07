@@ -33,7 +33,7 @@ class raw_env(AECEnv):
         "render_fps": 2,
     }
 
-    def __init__(self):
+    def __init__(self, rewardFn):
         super().__init__()
         self.observations = None
         self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()])
@@ -41,6 +41,7 @@ class raw_env(AECEnv):
         self.agent_selection = None
         self.possible_agents = [0, 1]
         self.agents = [0, 1]
+        self.rewardFn = rewardFn
 
         self.num_distinct_creatures = 16
         self.num_distinct_cards = 17
@@ -60,7 +61,7 @@ class raw_env(AECEnv):
                 1 + self.num_distinct_cards + self.num_distinct_creatures + self.num_distinct_creatures ** 2)
             for agent in self.agents}
 
-        max_values = np.array([25] + [3] * 3 * self.num_distinct_creatures + [29] + [21] + [21])
+        max_values = np.array([29] + [3] * 5 * self.num_distinct_creatures + 2*[29] + [21] + [21] + [2])
         self._observation_spaces = {
             agent: MultiDiscrete(max_values)
             for agent in self.agents
@@ -69,7 +70,7 @@ class raw_env(AECEnv):
 
     def reset(self, seed=None, options=None):
         self.agents = copy(self.possible_agents)
-        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()])
+        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()], self.rewardFn)
         self.rewards = {agent: 0 for agent in self.agents}
         self._cumulative_rewards = {agent: 0 for agent in self.agents}
         self.terminations = {agent: False for agent in self.agents}
@@ -104,7 +105,6 @@ class raw_env(AECEnv):
                         creature == self.distinct_creatures[i],
                         not creature.tapped,
                         not creature.summoning_sick,
-                        creature not in self.state.attackingCreatures
                     ]):
                         mask[i + last] = 1
 
@@ -115,7 +115,6 @@ class raw_env(AECEnv):
                     if all([
                         self.distinct_creatures[i] in self.state.attackingCreatures,
                         self.distinct_creatures[j] in self.state.untappedCreatures(agent),
-                        self.distinct_creatures[j] not in flatten([*self.state.blockingCreatures.values()])
                     ]):
                         mask[j + self.num_distinct_creatures*i+ last] = 1
         return mask
@@ -148,12 +147,15 @@ class raw_env(AECEnv):
             obs[index] += 1
         return obs
 
+    #0 - in deck, 1 - in hand, 2 - in play - 3 - attacking, 4 - blocking
     def observe(self, agent):
         obs = np.concatenate([
             self.convert_to_multidiscrete(self.state.hands[agent], self.distinct_cards),
             self.convert_to_multidiscrete(self.state.creatures[agent], self.distinct_creatures),
             self.convert_to_multidiscrete(self.state.creatures[1 - agent], self.distinct_creatures),
-            np.array([self.state.totalLands[agent], self.state.life[agent], self.state.life[1 - agent]],
+            self.convert_to_multidiscrete(self.state.attackingCreatures, self.distinct_creatures),
+            self.convert_to_multidiscrete(flatten(map(lambda x : x[1], self.state.blockingCreatures)), self.distinct_creatures),
+            np.array([self.state.totalLands[agent], self.state.untappedLands[agent], self.state.life[agent], self.state.life[1 - agent], self.state.turn == agent],
                      dtype=np.float32)
         ])
         return {"observation":obs.astype(np.float32), "action_mask":self.generate_action_mask(agent)}
@@ -166,40 +168,39 @@ class raw_env(AECEnv):
             reward = self.state.passPriority(pl)
             self.rewards[pl] += reward
             self.rewards[1-pl] -= reward
-            self._accumulate_rewards()
         elif action_type == "play_card":
             self.state.playCard(copy(self.distinct_cards[action_index]), pl)
             self.rewards[pl] += 5
         elif action_type == "attack":
             attacker = next((c for c in self.state.creatures[pl] if c.name == self.distinct_creatures[action_index].name))
-            self.state.addAttacker(attacker)
+            self.state.addAttacker(pl, attacker)
         elif action_type == "block":
             attacker, blocker = action_index
-            attacker = next((c for c in self.state.creatures[1 - pl] if c.name == self.distinct_creatures[attacker].name))
+            attacker = next((c for c in self.state.attackingCreatures if c.name == self.distinct_creatures[attacker].name))
             blocker = next((c for c in self.state.creatures[pl] if c.name == self.distinct_creatures[blocker].name))
-            self.state.addBlocker(attacker, blocker)
+            self.state.addBlocker(pl, attacker, blocker)
         if self.state.life[pl] <= 0 or len(self.state.decks[pl]) == 0:
-            self.rewards[pl] += -100
-            self.rewards[1 - pl] += 100
+            self.rewards[pl] -= 5000
+            self.rewards[1 - pl] += 5000
             self.terminations = {0: True, 1: True}
             self._accumulate_rewards()
-            if (pl == 0):
+            if (pl == 1):
                 print("Loss")
-                print(f"My reward {self._cumulative_rewards[0]}, their reward {self._cumulative_rewards[1]}")
+                print(f"My reward {self._cumulative_rewards[1]}, their reward {self._cumulative_rewards[0]}")
             else:
                 print("Win")
-                print(f"My reward {self._cumulative_rewards[0]}, their reward {self._cumulative_rewards[1]}")
+                print(f"My reward {self._cumulative_rewards[1]}, their reward {self._cumulative_rewards[0]}")
             self.reset()
         if self.state.life[1 - pl] <= 0 or len(self.state.decks[1-pl]) == 0:
-            self.rewards[1 - pl] = -1
-            self.rewards[pl] = 1
+            self.rewards[1 - pl] -= 5000
+            self.rewards[pl] += 5000
             self.terminations = {0: True, 1: True}
             self._accumulate_rewards()
             self.reset()
-            # if (pl == 1):
-            #     print("Loss1")
-            # else:
-            #     print("Win1")
+            if (pl == 1):
+                print("Loss1")
+            else:
+                print("Win1")
         self.observations = {agent: self.observe(agent) for agent in self.agents}
         self.infos = {agent: {"action_mask": self.generate_action_mask(agent)} for agent in self.agents}
         self._agent_selector = self.state.priority

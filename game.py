@@ -2,7 +2,11 @@ import random
 from collections import defaultdict
 
 import numpy as np
-
+def flatten(matrix):
+    flat_set = set()
+    for row in matrix:
+        flat_set = flat_set.union(set(row))
+    return flat_set
 
 class MagicCard:
     def __init__(self, name, cost, image_path):
@@ -53,7 +57,8 @@ class Land(MagicCard):
 
 
 class GameState:
-    def __init__(self, decks):
+    def __init__(self, decks, rewardFn):
+        self.rewardFn = rewardFn
         self.decks = decks
         self.hands = [[], []]
         self.life = [20, 20]
@@ -63,7 +68,7 @@ class GameState:
         self.landDrops = [1, 1]
         self.attacks = [1, 1]
         self.attackingCreatures = []
-        self.blockingCreatures = {}
+        self.blockingCreatures = []
         self.shuffleDeck(0)
         self.shuffleDeck(1)
         self.drawCards(7, 0)
@@ -73,21 +78,28 @@ class GameState:
         # 'main1', 'declare_attackers', 'declare_blockers', 'main2'
         self.phase = 0
 
-    def addBlocker(self, attacker, blocker):
-        self.blockingCreatures[attacker].append(blocker)
+    def addBlocker(self, pl, attacker, blocker):
+        self.creatures[pl].remove(blocker)
+        i = next((index for index, creature in enumerate(self.blockingCreatures) if creature[0] == attacker))
+        self.blockingCreatures[i][1].append(blocker)
 
-    def addAttacker(self, attacker):
+    def addAttacker(self, pl, attacker):
+        self.creatures[pl].remove(attacker)
         self.attackingCreatures.append(attacker)
 
     def declareAttack(self):
         for attacker in self.attackingCreatures:
             attacker.tap()
-        self.blockingCreatures = {attacker: [] for attacker in self.attackingCreatures}
+        self.blockingCreatures = [[attacker,[]] for attacker in self.attackingCreatures]
 
     def declareBlock(self, pl):
         reward = 0
-        for attacker, blockers in self.blockingCreatures.items():
-            reward += self.resolveAttack(attacker, blockers, 1 - pl)
+        for i in range(len(self.blockingCreatures)):
+            reward += self.resolveAttack(i, 1 - pl)
+        self.creatures[1-pl] += self.attackingCreatures
+        self.creatures[pl] += flatten(map(lambda x : x[1], self.blockingCreatures))
+        self.attackingCreatures = []
+        self.blockingCreatures = []
         self.phase = 3
         return reward
 
@@ -136,30 +148,23 @@ class GameState:
         for _ in range(n):
             self.hands[pl].append(self.decks[pl].pop())
 
-    def rewardFn(self, life, mana, cards, pl):
-        if self.life[1-pl] <= 0:
-            return -100
-        else:
-            return life * (10 / self.life[1-pl]) + 3 * cards + 2 * mana
-
-    def resolveAttack(self, attacker, blockers, pl):
+    def resolveAttack(self, i, pl):
+        attacker, blockers = self.blockingCreatures[i]
         life, mana, cards = 0, 0, 0
         if len(blockers) == 0:
             self.life[1 - pl] -= attacker.power
             life -= attacker.power
         else:
             damage = attacker.power
-            i = 0
-            while i < len(blockers) and blockers[i].toughness <= damage:
-                self.creatures[1 - pl].remove(blockers[i])
-                mana -= blockers[i].cost
-                cards -= 1
-                damage -= blockers[i].toughness
-                i += 1
             if blockers != [] and attacker.toughness <= sum([blocker.power for blocker in blockers]):
-                self.creatures[pl].remove(attacker)
                 mana += attacker.cost
                 cards += 1
+                self.attackingCreatures.remove(attacker)
+            while len(blockers) > 0 and blockers[0].toughness <= damage:
+                mana -= blockers[0].cost
+                cards -= 1
+                damage -= blockers[0].toughness
+                blockers.remove(blockers[0])
         return self.rewardFn(life, mana, cards, pl)
 
     def untappedCreatures(self, pl):
@@ -169,8 +174,7 @@ class GameState:
         self.drawCards(1, pl)
         self.untappedLands[pl] = self.totalLands[pl]
         self.landDrops[pl] = 1
-        self.attackingCreatures = []
-        self.blockingCreatures = {}
+        self.blockingCreatures = []
         self.priority = self.turn
         self.phase = 0
         for creature in self.creatures[pl]:
