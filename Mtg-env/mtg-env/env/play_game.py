@@ -2,24 +2,15 @@ import os
 import tkinter as tk
 
 import numpy as np
-import supersuit as ss
 from PIL import Image, ImageTk
 import threading
 import time
 import glob
+import train
 
-from pettingzoo.utils import aec_to_parallel
 from sb3_contrib import MaskablePPO
 
 from mtg_env import raw_env
-
-import torch
-from stable_baselines3.ppo import CnnPolicy
-from stable_baselines3 import PPO
-from pettingzoo.classic import connect_four_v3
-
-
-
 
 class MTGRender:
     def __init__(self, env, model, mode, speed):
@@ -198,7 +189,7 @@ class MTGRender:
                 break
 
 if __name__ == "__main__":
-    env = raw_env()  # Your custom MTG environment
+    env = raw_env(train.rewardFn)  # Your custom MTG environment
 
     try:
         latest_policy = max(

@@ -165,7 +165,7 @@ class GameState:
                 cards -= 1
                 damage -= blockers[0].toughness
                 blockers.remove(blockers[0])
-        return self.rewardFn(life, mana, cards, pl)
+        return self.rewardFn(life, mana, cards)
 
     def untappedCreatures(self, pl):
         return [creature for creature in self.creatures[pl] if not creature.tapped]

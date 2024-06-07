@@ -1,22 +1,11 @@
-"""Uses Stable-Baselines3 to train agents in the Connect Four environment using invalid action masking.
-
-For information about invalid action masking in PettingZoo, see https://pettingzoo.farama.org/api/aec/#action-masking
-For more information about invalid action masking in SB3, see https://sb3-contrib.readthedocs.io/en/master/modules/ppo_mask.html
-
-Author: Elliot (https://github.com/elliottower)
-"""
-import glob
-import os
 import time
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.wrappers import ActionMasker
-from render_game import MTGRender
 
 import pettingzoo.utils
 import mtg_env_v0
-from pettingzoo.classic import connect_four_v3
 
 
 
@@ -66,12 +55,8 @@ def linear_schedule(initial_value):
         return progress_remaining * initial_value
     return func
 
-def rewardFn(life, mana, cards, pl):
-    if life[1-pl] <= 0:
-        return -1000
-    else:
-        # life * (10 / self.life[1 - pl])
-        return life * (10 / life[1 - pl]) + 50 * cards + 2 * mana
+def rewardFn(life, mana, cards):
+    return life + 50 * cards + 2 * mana
 
 
 def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
@@ -116,9 +101,9 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
 if __name__ == "__main__":
     env_fn = mtg_env_v0
 
-    env_kwargs = {'rewardfn':rewardFn}
+    env_kwargs = {'rewardFn':rewardFn}
 
-    # Train a model against itself (takes ~20 seconds on a laptop CPU)
-    train_action_mask(env_fn, steps=100000, seed=0, **env_kwargs)
+    # Train a model against itself
+    train_action_mask(env_fn, steps=10000, seed=0, **env_kwargs)
 
 

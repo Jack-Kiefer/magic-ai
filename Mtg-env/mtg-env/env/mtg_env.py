@@ -36,7 +36,7 @@ class raw_env(AECEnv):
     def __init__(self, rewardFn):
         super().__init__()
         self.observations = None
-        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()])
+        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()], rewardFn)
         self._agent_selector = None
         self.agent_selection = None
         self.possible_agents = [0, 1]
