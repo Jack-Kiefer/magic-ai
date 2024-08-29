@@ -1,4 +1,4 @@
-<img src="images/mtg_img.png" alt="Magic AI Image" width="600">
+<img src="images/mtg_img.PNG" alt="Magic AI Image" width="600">
 
 ---
 
