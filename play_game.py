@@ -25,7 +25,7 @@ class MTGRender:
         self.root = tk.Tk()
         self.root.title("Magic: The Gathering Game Environment")
 
-        self.w = 1800
+        self.w = 1200
         self.h = 900
         self.canvas = tk.Canvas(self.root, width=self.w, height=self.h)
         self.canvas.pack()
@@ -73,8 +73,8 @@ class MTGRender:
             sign = 1
         self.canvas.create_text(50, hand_y + self.cardh / 2, text=str(self.env.state.life[player]), fill="black",
                                 font=('Helvetica 30 bold'))
-        self.canvas.create_text(50, reward_y, text=str(int(self.env._cumulative_rewards[player])), fill="black",
-                                font=('Helvetica 20 bold'))
+        # self.canvas.create_text(50, reward_y, text=str(int(self.env._cumulative_rewards[player])), fill="black",
+        #                         font=('Helvetica 20 bold'))
 
         if player == 1:
             start = self.calculateStart(len(self.env.state.hands[player]))

@@ -70,7 +70,7 @@ class MTGRender:
 
     def draw_player_area(self, player, hand_y, lands_y, creatures_y, reward_y):
         self.canvas.create_text(50, hand_y+self.cardh/2, text=str(self.env.state.life[player]), fill="black", font=('Helvetica 30 bold'))
-        self.canvas.create_text(50, reward_y, text=str(int(self.env._cumulative_rewards[player])), fill="black",font=('Helvetica 20 bold'))
+        # self.canvas.create_text(50, reward_y, text=str(int(self.env._cumulative_rewards[player])), fill="black",font=('Helvetica 20 bold'))
 
         start = self.calculateStart(len(self.env.state.hands[player]))
         for card in self.env.state.hands[player]:

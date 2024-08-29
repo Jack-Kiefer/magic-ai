@@ -1,3 +1,7 @@
+<img src="mtg_img.png" alt="Magic AI Image" width="600">
+
+---
+
 # Magic AI
 
 Magic AI is a project designed to train agents to play a custom Magic: The Gathering environment using reinforcement learning. The environment leverages PettingZoo, a library for multi-agent reinforcement learning environments, and Stable-Baselines3 (SB3) to implement training with action masking.
@@ -11,7 +15,8 @@ Magic AI is a project designed to train agents to play a custom Magic: The Gathe
 5. [Environment Details](#environment-details)
 6. [Action and Observation Spaces](#action-and-observation-spaces)
 7. [Training](#training)
-8. [Acknowledgements](#acknowledgements)
+8. [Future Improvements](#future-improvements)
+9. [Acknowledgements](#acknowledgements)
 
 ## Overview
 
@@ -23,8 +28,8 @@ Magic AI simulates a Magic: The Gathering environment where agents are trained t
 - Action masking for handling invalid actions during training.
 - Integration with SB3 for reinforcement learning.
 - Custom reward functions to optimize gameplay strategy.
-- Command-line flags for customizable training parameters (steps, seed, learning rate).
-- Modes for playing against the AI or having the AI play autonomously.
+- Command-line flags for customizable training parameters (steps, learning rate).
+- Modes for playing against the AI or having the AI play against a random action opponent.
 
 ## Installation
 
@@ -58,10 +63,10 @@ This will install all the required packages, including PettingZoo, Stable-Baseli
    - `--steps`: Number of training steps (default: 10,000).
    - `--learning_rate`: Initial learning rate for the training (default: 0.002).
 
-3. **Playing Against the AI**: After training, you can use the `play_game.py` script to interact with the trained agent. This script allows you to test the AI's performance in a simulated game environment. You can specify whether to run in "human" mode (where you play against the AI) or "ai" mode (where AI plays against itself) using command-line flags:
+3. **Playing Against the AI**: After training, you can use the `play_game.py` script to interact with the trained agent. This script allows you to test the AI's performance in a simulated game environment. You can specify whether to run in "human" mode (where you play against the AI) or "ai" mode (where AI plays against a random action opponent) using command-line flags:
 
    ```bash
-   python play_game.py --mode human --speed 0.01
+   python play_game.py --mode human --speed 0.2
    ```
 
    - `--mode`: Set to `human` for human vs. AI mode or `ai` for AI vs. AI mode.
@@ -88,11 +93,11 @@ The action space is defined using a `Discrete` space that allows agents to perfo
 - **18-33**: Attack with a creature.
 - **34-289**: Block with a creature on another creature.
 
-The size of the action space is calculated based on the number of unique cards and creatures, including combinations for attacking and blocking. This setup ensures that all possible actions in a Magic: The Gathering game are covered.
+The size of the action space is calculated based on the number of unique cards and creatures, including combinations for attacking and blocking. This is a very limited view of the game but works for this example.
 
 ### Observation Space
 
-The observation space is a `MultiDiscrete` space, which provides a comprehensive view of the game state for each agent. Key components include:
+The observation space is a `MultiDiscrete` space, which provides a view of the game state for each agent. Key components include:
 
 - **Hand and Deck Representation**: The number and type of cards in hand and deck.
 - **Creatures in Play**: Information about creatures on the battlefield, their states (tapped/untapped), and any special conditions (e.g., summoning sickness).
@@ -108,11 +113,23 @@ Action masking is implemented to filter out invalid actions based on the current
 
 ### Reward Function
 
-The reward function is defined in `train.py` as `rewardFn`. It calculates rewards based on the agent's life, mana, and cards, providing feedback that helps the agent learn optimal strategies.
+The reward function is defined in `train.py` as `rewardFn`. It calculates rewards based on the agent's life total and mana value or cards lost or gained in a block. Feel free to change this function.
 
 ## Training
 
 The training process utilizes the MaskablePPO algorithm from SB3, allowing the agent to learn over time by simulating thousands of games. The training script automatically saves the model after training, which can then be loaded for further evaluation or gameplay.
+
+## Future Improvements
+
+While Magic AI already provides a robust framework for training agents in a simplified Magic: The Gathering environment, there are several areas for future enhancement:
+
+1. **Ordering Blockers**: Implementing logic to handle the order in which blockers are dealt damage by attacking creatures. This would give more of an advantage or attackers in this scenario.
+
+2. **Creatures with Abilities**: Adding support for creatures with abilities such as flying, trample, or deathtouch. This would involve expanding the action space and observation space to account for these abilities and their effects on the game state.
+
+3. **Instants and Sorceries**: Incorporating instant and sorcery spells, which can be played at various times and have immediate effects. This addition would require changes to the action space to allow for timing decisions and interaction between different types of spells.
+
+These improvements would bring the Magic AI environment closer to the full complexity of Magic: The Gathering, providing richer training data for agents and more challenging gameplay scenarios.
 
 ## Acknowledgements
 
