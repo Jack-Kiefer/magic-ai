@@ -5,7 +5,7 @@ import numpy as np
 from gymnasium.spaces import Discrete, MultiDiscrete
 from pettingzoo.utils import wrappers
 
-import rungame
+import deck
 import game
 
 from pettingzoo import AECEnv
@@ -24,30 +24,37 @@ def env(**kwargs):
     env = wrappers.OrderEnforcingWrapper(env)
     return env
 
+def baseRewardFn(life, mana, cards):
+    if life <= 0:
+        return -1000
+    else:
+        # life * (10 / self.life[1 - pl])
+        return life * (10 / life) + 50 * cards + 2 * mana
+
 
 class raw_env(AECEnv):
     metadata = {
         "render_modes": ["human", "rgb_array"],
         "name": "mtg_env_v0",
         "is_parallelizable": False,
-        "render_fps": 2,
+        "render_fps": 2
     }
 
-    def __init__(self, rewardFn):
+    def __init__(self, rewardFn = baseRewardFn):
         super().__init__()
+        self.rewardFn = rewardFn
         self.observations = None
-        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()])
+        self.state = game.GameState([deck.create_mono_green_deck(), deck.create_mono_green_deck()], rewardFn)
         self._agent_selector = None
         self.agent_selection = None
         self.possible_agents = [0, 1]
         self.agents = [0, 1]
-        self.rewardFn = rewardFn
 
         self.num_distinct_creatures = 16
         self.num_distinct_cards = 17
-        self.distinct_cards = rungame.generateDistinctCards()
-        self.distinct_creatures = rungame.generateDistinctCreatures()
-        self.creatures = rungame.generateCreatures()
+        self.distinct_cards = deck.generateDistinctCards()
+        self.distinct_creatures = deck.generateDistinctCreatures()
+        self.creatures = deck.generateCreatures()
         self.num_creatures = 32
 
         # action masking
@@ -70,7 +77,7 @@ class raw_env(AECEnv):
 
     def reset(self, seed=None, options=None):
         self.agents = copy(self.possible_agents)
-        self.state = game.GameState([rungame.create_mono_green_deck(), rungame.create_mono_green_deck()], self.rewardFn)
+        self.state = game.GameState([deck.create_mono_green_deck(), deck.create_mono_green_deck()], self.rewardFn)
         self.rewards = {agent: 0 for agent in self.agents}
         self._cumulative_rewards = {agent: 0 for agent in self.agents}
         self.terminations = {agent: False for agent in self.agents}

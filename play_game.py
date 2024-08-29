@@ -209,5 +209,5 @@ if __name__ == "__main__":
         exit(0)
 
     model = MaskablePPO.load(latest_policy)
-    renderer = MTGRender(env, model, "ai", .01)
+    renderer = MTGRender(env, model, "human", .01)
     renderer.run()  # Start the GUI loop if needed

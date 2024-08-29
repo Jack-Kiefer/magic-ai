@@ -62,12 +62,12 @@ def linear_schedule(initial_value):
         return progress_remaining * initial_value
     return func
 
-def rewardFn(life, mana, cards, pl):
-    if life[1-pl] <= 0:
+def rewardFn(life, mana, cards):
+    if life <= 0:
         return -1000
     else:
         # life * (10 / self.life[1 - pl])
-        return life * (10 / life[1 - pl]) + 50 * cards + 2 * mana
+        return life * (10 / life) + 50 * cards + 2 * mana
 
 
 def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
@@ -112,9 +112,9 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
 if __name__ == "__main__":
     env_fn = mtg_env_v0
 
-    env_kwargs = {'rewardfn':rewardFn}
+    env_kwargs = {'rewardFn':rewardFn}
 
     # Train a model against itself (takes ~20 seconds on a laptop CPU)
-    train_action_mask(env_fn, steps=100000, seed=0, **env_kwargs)
+    train_action_mask(env_fn, steps=10000, seed=0, **env_kwargs)
 
 

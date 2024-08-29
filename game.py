@@ -150,10 +150,9 @@ class GameState:
 
     def resolveAttack(self, i, pl):
         attacker, blockers = self.blockingCreatures[i]
-        life, mana, cards = 0, 0, 0
+        mana, cards = 0, 0
         if len(blockers) == 0:
             self.life[1 - pl] -= attacker.power
-            life -= attacker.power
         else:
             damage = attacker.power
             if blockers != [] and attacker.toughness <= sum([blocker.power for blocker in blockers]):
@@ -165,7 +164,7 @@ class GameState:
                 cards -= 1
                 damage -= blockers[0].toughness
                 blockers.remove(blockers[0])
-        return self.rewardFn(life, mana, cards, pl)
+        return self.rewardFn(self.life[1-pl], mana, cards)
 
     def untappedCreatures(self, pl):
         return [creature for creature in self.creatures[pl] if not creature.tapped]
