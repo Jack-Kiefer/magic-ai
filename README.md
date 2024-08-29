@@ -28,7 +28,7 @@ Magic AI simulates a Magic: The Gathering environment where agents are trained t
 - Action masking for handling invalid actions during training.
 - Integration with SB3 for reinforcement learning.
 - Custom reward functions to optimize gameplay strategy.
-- Command-line flags for customizable training parameters (steps, learning rate).
+- Visual environment to play or watch a game of Magic
 - Modes for playing against the AI or having the AI play against a random action opponent.
 
 ## Installation
