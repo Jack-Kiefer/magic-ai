@@ -1,11 +1,5 @@
-"""Uses Stable-Baselines3 to train agents in the Connect Four environment using invalid action masking.
-
-For information about invalid action masking in PettingZoo, see https://pettingzoo.farama.org/api/aec/#action-masking
-For more information about invalid action masking in SB3, see https://sb3-contrib.readthedocs.io/en/master/modules/ppo_mask.html
-
-Author: Elliot (https://github.com/elliottower)
-"""
 import time
+import argparse  # Import argparse for command-line arguments
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
@@ -13,8 +7,6 @@ from sb3_contrib.common.wrappers import ActionMasker
 
 import pettingzoo.utils
 import mtg_env_v0
-
-
 
 class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper):
     """Wrapper to allow PettingZoo environments to be used with SB3 illegal action masking."""
@@ -46,7 +38,6 @@ class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper):
         """Separate function used in order to access the action mask."""
         return super().observe(self.agent_selection)["action_mask"]
 
-
 def mask_fn(env):
     # Do whatever you'd like in this function to return the action mask
     # for the current env. In this example, we assume the env has a
@@ -66,11 +57,9 @@ def rewardFn(life, mana, cards):
     if life <= 0:
         return -1000
     else:
-        # life * (10 / self.life[1 - pl])
         return life * (10 / life) + 50 * cards + 2 * mana
 
-
-def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
+def train_action_mask(env_fn, steps=10_000, seed=0, initial_learning_rate=0.002, **env_kwargs):
     """Train a single model to play as each agent in a zero-sum game environment using invalid action masking."""
     env = env_fn.env(**env_kwargs)
 
@@ -82,12 +71,7 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
     env.reset(seed=seed)  # Must call reset() in order to re-define the spaces
 
     env = ActionMasker(env, mask_fn)  # Wrap to enable masking (SB3 function)
-    # MaskablePPO behaves the same as SB3's PPO unless the env is wrapped
-    # with ActionMasker. If the wrapper is detected, the masks are automatically
-    # retrieved and used when learning. Note that MaskablePPO does not accept
-    # a new action_mask_fn kwarg, as it did in an earlier draft.
 
-    initial_learning_rate = 0.002
     learning_rate = linear_schedule(initial_learning_rate)
 
     model = MaskablePPO(
@@ -108,13 +92,16 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
 
     env.close()
 
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train a Magic: The Gathering AI using Stable-Baselines3.")
+    parser.add_argument("--steps", type=int, default=10000, help="Number of training steps")
+    parser.add_argument("--learning_rate", type=float, default=0.002, help="Initial learning rate for training")
+
+    args = parser.parse_args()
+
     env_fn = mtg_env_v0
 
-    env_kwargs = {'rewardFn':rewardFn}
+    env_kwargs = {'rewardFn': rewardFn}
 
-    # Train a model against itself (takes ~20 seconds on a laptop CPU)
-    train_action_mask(env_fn, steps=10000, seed=0, **env_kwargs)
-
-
+    # Train a model with the specified parameters
+    train_action_mask(env_fn, steps=args.steps, seed=0, initial_learning_rate=args.learning_rate, **env_kwargs)

@@ -1,29 +1,24 @@
 import os
+import argparse  # Import argparse for command-line arguments
 import tkinter as tk
-
 import numpy as np
 import supersuit as ss
 from PIL import Image, ImageTk
 import threading
 import time
 import glob
-
 from pettingzoo.utils import aec_to_parallel
 from sb3_contrib import MaskablePPO
-
 from mtg_env import raw_env
-
 import torch
 from stable_baselines3.ppo import CnnPolicy
 from stable_baselines3 import PPO
 from pettingzoo.classic import connect_four_v3
 
 
-
-
 class MTGRender:
     def __init__(self, env, model, mode, speed):
-        self.speed=speed
+        self.speed = speed
         self.mode = mode
         self.model = model
         self.env = env
@@ -34,8 +29,8 @@ class MTGRender:
         self.h = 900
         self.canvas = tk.Canvas(self.root, width=self.w, height=self.h)
         self.canvas.pack()
-        self.cardw = int(250/2.3)
-        self.cardh = int(350/2.3)
+        self.cardw = int(250 / 2.3)
+        self.cardh = int(350 / 2.3)
         self.margin = 10
 
         self.images = {}
@@ -49,7 +44,6 @@ class MTGRender:
         self.env_thread = threading.Thread(target=self.run_environment)
         self.env_thread.daemon = True
         self.env_thread.start()
-
 
     def load_image(self, path):
         image = Image.open(path)
@@ -70,15 +64,17 @@ class MTGRender:
             self.tapped_images[card.name] = self.load_tapped_image(card.image_path)
 
     def calculateStart(self, num_cards):
-        return 100 + (self.w-100 - num_cards*(self.cardw + self.margin)) / 2
+        return 100 + (self.w - 100 - num_cards * (self.cardw + self.margin)) / 2
 
     def draw_player_area(self, player, hand_y, lands_y, creatures_y, reward_y):
         if player == 1:
             sign = 1
         else:
             sign = 1
-        self.canvas.create_text(50, hand_y+self.cardh/2, text=str(self.env.state.life[player]), fill="black", font=('Helvetica 30 bold'))
-        self.canvas.create_text(50, reward_y, text=str(int(self.env._cumulative_rewards[player])), fill="black",font=('Helvetica 20 bold'))
+        self.canvas.create_text(50, hand_y + self.cardh / 2, text=str(self.env.state.life[player]), fill="black",
+                                font=('Helvetica 30 bold'))
+        self.canvas.create_text(50, reward_y, text=str(int(self.env._cumulative_rewards[player])), fill="black",
+                                font=('Helvetica 20 bold'))
 
         if player == 1:
             start = self.calculateStart(len(self.env.state.hands[player]))
@@ -111,18 +107,19 @@ class MTGRender:
                 start = self.calculateStart(len(self.env.state.creatures[player]) + len(self.env.state.blockingCreatures))
                 for attacker, blockers in self.env.state.blockingCreatures:
                     image = self.tapped_images[attacker.name]
-                    self.canvas.create_image(start, creatures_y + sign * self.cardh//4, image=image, anchor='nw')
+                    self.canvas.create_image(start, creatures_y + sign * self.cardh // 4, image=image, anchor='nw')
                     offset = 0
                     for blocker in blockers:
                         image = self.images[blocker.name]
-                        self.canvas.create_image(start + offset, 2 * self.h//5 + offset - self.margin, image=image, anchor='nw')
+                        self.canvas.create_image(start + offset, 2 * self.h // 5 + offset - self.margin, image=image,
+                                                 anchor='nw')
                         offset += 10
                     start += self.cardw + self.margin
 
         for card in self.env.state.creatures[player]:
             if card.tapped:
                 image = self.tapped_images[card.name]
-                self.canvas.create_image(start, creatures_y  + sign * self.cardh // 4, image=image, anchor='nw')
+                self.canvas.create_image(start, creatures_y + sign * self.cardh // 4, image=image, anchor='nw')
             else:
                 image = self.images[card.name]
                 self.canvas.create_image(start, creatures_y, image=image, anchor='nw')
@@ -131,11 +128,12 @@ class MTGRender:
     def draw_board(self):
         self.canvas.delete("all")
         if self.env.state.turn == 0:
-            self.canvas.create_rectangle(0, 0, self.w, 2 * self.h/5, fill="#FDF3B1")
+            self.canvas.create_rectangle(0, 0, self.w, 2 * self.h / 5, fill="#FDF3B1")
         else:
-            self.canvas.create_rectangle(0, 2 * self.h/5, self.w, self.h, fill="#FDF3B1")
+            self.canvas.create_rectangle(0, 2 * self.h / 5, self.w, self.h, fill="#FDF3B1")
         self.draw_player_area(0, 0, self.margin, 2 * self.margin + self.cardh, 300)
-        self.draw_player_area(1, self.h - self.margin - self.cardh, self.h - 2 *(self.margin + self.cardh), self.h - 3 *(self.margin + self.cardh), 350)
+        self.draw_player_area(1, self.h - self.margin - self.cardh, self.h - 2 * (self.margin + self.cardh),
+                              self.h - 3 * (self.margin + self.cardh), 350)
 
     def update(self):
         self.draw_board()
@@ -198,6 +196,12 @@ class MTGRender:
                 break
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run the Magic: The Gathering AI environment.")
+    parser.add_argument("--mode", type=str, default="human", choices=["human", "ai"], help="Mode of the game: human or ai")
+    parser.add_argument("--speed", type=float, default=0.01, help="Speed of the game in seconds per step")
+
+    args = parser.parse_args()
+
     env = raw_env()  # Your custom MTG environment
 
     try:
@@ -209,5 +213,5 @@ if __name__ == "__main__":
         exit(0)
 
     model = MaskablePPO.load(latest_policy)
-    renderer = MTGRender(env, model, "human", .01)
+    renderer = MTGRender(env, model, mode=args.mode, speed=args.speed)
     renderer.run()  # Start the GUI loop if needed
